@@ -10,7 +10,9 @@ This is currently a proof of concept CLI tool using the [`gzp`](https://github.c
 
 This are very anecdotal. Data [here](https://archive.ics.uci.edu/ml/machine-learning-databases/00347/all_train.csv.gz).
 
-Compiled with `cargo --release` and no tricks.
+Compiled with `cargo --release` and no tricks (i.e. no native flags). `pigz` is version 2.4 installed via ubuntu package manager.
+
+32 threads available for use on benchmark system using NVMe storage.
 
 ```bash
 cat data.csv | /usr/bin/time crabz -c 3 > crabby.gz
