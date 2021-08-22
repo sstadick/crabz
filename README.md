@@ -6,6 +6,12 @@ Like pigz, but rust.
 
 This is currently a proof of concept CLI tool using the [`gzp`](https://github.com/sstadick/gzp/) crate.
 
+## Install
+
+```
+cargo install crabz
+```
+
 ## Benchmarks
 
 This are very anecdotal. Data [here](https://archive.ics.uci.edu/ml/machine-learning-databases/00347/all_train.csv.gz).
