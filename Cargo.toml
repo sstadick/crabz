@@ -13,5 +13,6 @@ keywords = ["compression", "parallel", "pigz"]
 description = "Parallel Compression"
 
 [[bin]]
+name = "crabz"
 path = "src/main.rs"
 
