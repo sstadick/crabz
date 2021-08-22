@@ -50,13 +50,9 @@ fn is_broken_pipe(err: &Report) -> bool {
     false
 }
 
-/// A small program to do clean up delimited data.
+/// A small POC program to compress files like pigz.
 ///
-/// For each field in each record this will do the following:
-///
-/// 1. Remove the delimiter from inside any quoted fields
-/// 2. Remove the terminator from inside any quoted fields
-/// 3. Fix any non-UTF8 encodings
+/// This will use all threads possible on your system.
 #[derive(StructOpt, Debug)]
 #[structopt(name = "cleanse", author, global_setting(ColoredHelp))]
 struct Opts {
