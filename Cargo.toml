@@ -1,0 +1,17 @@
+[package]
+name = "crabz"
+authors = ["Seth Stadick <sstadick@gmail.com>"]
+version = "0.1.0"
+edition = "2018"
+license = "Unlicense/MIT"
+readme = "README.md"
+documentation = "https://docs.rs/crabz"
+homepage = "https://github.com/sstadick/crabz"
+repository = "https://github.com/sstadick/crabz"
+categories = ["compression", "concurrency"]
+keywords = ["compression", "parallel", "pigz"]
+description = "Parallel Compression"
+
+[[bin]]
+path = "src/main.rs"
+
