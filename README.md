@@ -47,4 +47,5 @@ cat data.csv | /usr/bin/time pigz -3 > crabby.gz
 `crabz` seems to be about 20-30% faster than pigz.
 
 This should be apples to apples with the same buffers, number of threads, and compression used.
+This difference persists even when using the other `gzp` backends, including the pure rust impl.
 The round trip md5sums tie out.
