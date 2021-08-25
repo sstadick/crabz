@@ -166,6 +166,7 @@ version = "0.1.4-alpha.0"
 dependencies = [
  "color-eyre",
  "gzp",
+ "num_cpus",
  "structopt",
  "tracing",
  "tracing-subscriber",
@@ -299,9 +300,8 @@ checksum = "f0a01e0497841a3b2db4f8afa483cce65f7e96a3498bd6c541734792aeac8fe7"
 
 [[package]]
 name = "gzp"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dc2913ed80d841b8e632d00c7fcf790dc99544e10f5afe5bc7f1a0bff0cce5b1"
+version = "0.5.1-alpha.0"
+source = "git+https://github.com/sstadick/gzp?branch=feature/allow_oversubscribed_writer#62c84b6f63e018e2539f3464c7db583d1714d19b"
 dependencies = [
  "bytes",
  "flate2",

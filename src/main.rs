@@ -54,7 +54,7 @@ fn is_broken_pipe(err: &Report) -> bool {
 ///
 /// This will use all threads possible on your system.
 #[derive(StructOpt, Debug)]
-#[structopt(name = "cleanse", author, global_setting(ColoredHelp))]
+#[structopt(name = "crabz", author, global_setting(ColoredHelp))]
 struct Opts {
     /// Output path to write to, "-" to write to stdout
     #[structopt(short, long)]
@@ -67,6 +67,10 @@ struct Opts {
     /// Compression level
     #[structopt(short, long, default_value = "3")]
     compression_level: u32,
+
+    // Number of compression threads to use, uses all available if not set
+    #[structopt(short = "p", long)]
+    compression_threads: Option<usize>,
 }
 
 fn main() -> Result<(), Report> {
@@ -79,6 +83,7 @@ fn main() -> Result<(), Report> {
         get_input(opts.file)?,
         get_output(opts.output)?,
         opts.compression_level,
+        opts.compression_threads.unwrap_or_else(num_cpus::get),
     ) {
         if is_broken_pipe(&err) {
             exit(0)
@@ -89,13 +94,23 @@ fn main() -> Result<(), Report> {
 }
 
 /// Run the program, returning any found errors
-fn run<R, W>(mut input: R, output: W, compression_level: u32) -> Result<(), Report>
+fn run<R, W>(
+    mut input: R,
+    output: W,
+    compression_level: u32,
+    num_threads: usize,
+) -> Result<(), Report>
 where
     R: Read,
     W: Write + Send + 'static,
 {
+    info!(
+        "Compressing with {} threads at compression level {}.",
+        num_threads, compression_level
+    );
     let mut parz: ParZ<Gzip> = ParZ::builder(output)
         .compression_level(Compression::new(compression_level))
+        .num_threads(num_threads)
         .build();
     io::copy(&mut input, &mut parz)?;
     parz.finish()?;
