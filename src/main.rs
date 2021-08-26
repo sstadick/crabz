@@ -1,16 +1,16 @@
-use color_eyre::Report;
+use anyhow::{Error, Result};
+use env_logger::Env;
 use gzp::deflate::Gzip;
 use gzp::parz::{Compression, ParZ};
+use log::info;
 use std::fs::File;
 use std::io::{self, BufReader, BufWriter, Read, Write};
 use std::path::PathBuf;
 use std::process::exit;
 use structopt::{clap::AppSettings::ColoredHelp, StructOpt};
-use tracing::info;
-use tracing_subscriber::EnvFilter;
 
 /// Get a bufferd input reader from stdin or a file
-fn get_input(path: Option<PathBuf>) -> Result<Box<dyn Read>, Report> {
+fn get_input(path: Option<PathBuf>) -> Result<Box<dyn Read>> {
     let reader: Box<dyn Read> = match path {
         Some(path) => {
             if path.as_os_str() == "-" {
@@ -25,7 +25,7 @@ fn get_input(path: Option<PathBuf>) -> Result<Box<dyn Read>, Report> {
 }
 
 /// Get a buffered output writer from stdout or a file
-fn get_output(path: Option<PathBuf>) -> Result<Box<dyn Write + Send + 'static>, Report> {
+fn get_output(path: Option<PathBuf>) -> Result<Box<dyn Write + Send + 'static>> {
     let writer: Box<dyn Write + Send + 'static> = match path {
         Some(path) => {
             if path.as_os_str() == "-" {
@@ -41,7 +41,7 @@ fn get_output(path: Option<PathBuf>) -> Result<Box<dyn Write + Send + 'static>, 
 
 /// Check if err is a broken pipe.
 #[inline]
-fn is_broken_pipe(err: &Report) -> bool {
+fn is_broken_pipe(err: &Error) -> bool {
     if let Some(io_err) = err.root_cause().downcast_ref::<io::Error>() {
         if io_err.kind() == io::ErrorKind::BrokenPipe {
             return true;
@@ -73,10 +73,10 @@ struct Opts {
     compression_threads: Option<usize>,
 }
 
-fn main() -> Result<(), Report> {
-    let opts = setup()?;
+fn main() -> Result<()> {
+    let opts = setup();
     if opts.compression_level > 9 {
-        return Err(Report::msg("Invalid compression level"));
+        return Err(Error::msg("Invalid compression level"));
     }
 
     if let Err(err) = run(
@@ -94,12 +94,7 @@ fn main() -> Result<(), Report> {
 }
 
 /// Run the program, returning any found errors
-fn run<R, W>(
-    mut input: R,
-    output: W,
-    compression_level: u32,
-    num_threads: usize,
-) -> Result<(), Report>
+fn run<R, W>(mut input: R, output: W, compression_level: u32, num_threads: usize) -> Result<()>
 where
     R: Read,
     W: Write + Send + 'static,
@@ -108,28 +103,21 @@ where
         "Compressing with {} threads at compression level {}.",
         num_threads, compression_level
     );
+    // TODO: handle single threaded with write::GzEncoder
     let mut parz: ParZ<Gzip> = ParZ::builder(output)
         .compression_level(Compression::new(compression_level))
-        .num_threads(num_threads)
+        .num_threads(num_threads)?
         .build();
     io::copy(&mut input, &mut parz)?;
     parz.finish()?;
     Ok(())
 }
 /// Parse args and set up logging / tracing
-fn setup() -> Result<Opts, Report> {
-    if std::env::var("RUST_LIB_BACKTRACE").is_err() {
-        std::env::set_var("RUST_LIB_BACKTRACE", "1");
-    }
-    color_eyre::install()?;
-
+fn setup() -> Opts {
     if std::env::var("RUST_LOG").is_err() {
         std::env::set_var("RUST_LOG", "info");
     }
-    tracing_subscriber::fmt::fmt()
-        .with_env_filter(EnvFilter::from_default_env())
-        .with_writer(std::io::stderr)
-        .init();
+    env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
 
-    Ok(Opts::from_args())
+    Opts::from_args()
 }
