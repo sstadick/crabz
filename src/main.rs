@@ -8,6 +8,8 @@ use std::io::{self, BufReader, BufWriter, Read, Write};
 use std::path::PathBuf;
 use std::process::exit;
 use structopt::{clap::AppSettings::ColoredHelp, StructOpt};
+use gzp::ZWriter;
+use gzp::z::ZBuilder;
 
 /// Get a bufferd input reader from stdin or a file
 fn get_input(path: Option<PathBuf>) -> Result<Box<dyn Read>> {
@@ -104,12 +106,16 @@ where
         num_threads, compression_level
     );
     // TODO: handle single threaded with write::GzEncoder
-    let mut parz: ParZ<Gzip> = ParZ::builder(output)
-        .compression_level(Compression::new(compression_level))
-        .num_threads(num_threads)?
-        .build();
-    io::copy(&mut input, &mut parz)?;
-    parz.finish()?;
+    let mut writer: Box<dyn ZWriter> = if num_threads > 1 {
+        Box::new(ParZ::<Gzip>::builder(output)
+            .compression_level(Compression::new(compression_level))
+            .num_threads(num_threads)?
+            .build())
+    } else {
+        Box::new(ZBuilder::<Gzip, _>::new().compression_level(Compression::new(compression_level)).from_writer(output))
+    };
+    io::copy(&mut input, &mut writer)?;
+    writer.finish()?;
     Ok(())
 }
 /// Parse args and set up logging / tracing
