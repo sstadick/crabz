@@ -1,15 +1,15 @@
 use anyhow::{Error, Result};
 use env_logger::Env;
+use flate2::write::GzDecoder;
 use gzp::deflate::Gzip;
-use gzp::parz::{Compression, ParZ};
+use gzp::parz::Compression;
+use gzp::ZBuilder;
 use log::info;
 use std::fs::File;
 use std::io::{self, BufReader, BufWriter, Read, Write};
 use std::path::PathBuf;
 use std::process::exit;
 use structopt::{clap::AppSettings::ColoredHelp, StructOpt};
-use gzp::ZWriter;
-use gzp::z::ZBuilder;
 
 /// Get a bufferd input reader from stdin or a file
 fn get_input(path: Option<PathBuf>) -> Result<Box<dyn Read>> {
@@ -70,9 +70,13 @@ struct Opts {
     #[structopt(short, long, default_value = "3")]
     compression_level: u32,
 
-    // Number of compression threads to use, uses all available if not set
+    /// Number of compression threads to use, uses all available if not set
     #[structopt(short = "p", long)]
     compression_threads: Option<usize>,
+
+    /// Flag to switch to decompressing inputs. Note: this flag may change in future releases
+    #[structopt(short, long)]
+    decompress: bool,
 }
 
 fn main() -> Result<()> {
@@ -81,22 +85,36 @@ fn main() -> Result<()> {
         return Err(Error::msg("Invalid compression level"));
     }
 
-    if let Err(err) = run(
-        get_input(opts.file)?,
-        get_output(opts.output)?,
-        opts.compression_level,
-        opts.compression_threads.unwrap_or_else(num_cpus::get),
-    ) {
-        if is_broken_pipe(&err) {
-            exit(0)
+    if opts.decompress {
+        if let Err(err) = run_decompress(get_input(opts.file)?, get_output(opts.output)?) {
+            if is_broken_pipe(&err) {
+                exit(0)
+            }
+            return Err(err);
         }
-        return Err(err);
+    } else {
+        if let Err(err) = run_compress(
+            get_input(opts.file)?,
+            get_output(opts.output)?,
+            opts.compression_level,
+            opts.compression_threads.unwrap_or_else(num_cpus::get),
+        ) {
+            if is_broken_pipe(&err) {
+                exit(0)
+            }
+            return Err(err);
+        }
     }
     Ok(())
 }
 
-/// Run the program, returning any found errors
-fn run<R, W>(mut input: R, output: W, compression_level: u32, num_threads: usize) -> Result<()>
+/// Run the compression program, returning any found errors
+fn run_compress<R, W>(
+    mut input: R,
+    output: W,
+    compression_level: u32,
+    num_threads: usize,
+) -> Result<()>
 where
     R: Read,
     W: Write + Send + 'static,
@@ -105,15 +123,24 @@ where
         "Compressing with {} threads at compression level {}.",
         num_threads, compression_level
     );
-    // TODO: handle single threaded with write::GzEncoder
-    let mut writer: Box<dyn ZWriter> = if num_threads > 1 {
-        Box::new(ParZ::<Gzip>::builder(output)
-            .compression_level(Compression::new(compression_level))
-            .num_threads(num_threads)?
-            .build())
-    } else {
-        Box::new(ZBuilder::<Gzip, _>::new().compression_level(Compression::new(compression_level)).from_writer(output))
-    };
+    let mut writer = ZBuilder::<Gzip, _>::new()
+        .num_threads(num_threads)
+        .compression_level(Compression::new(compression_level))
+        .from_writer(output);
+    io::copy(&mut input, &mut writer)?;
+    writer.finish()?;
+    Ok(())
+}
+
+/// Run the compression program, returning any found errors
+fn run_decompress<R, W>(mut input: R, output: W) -> Result<()>
+where
+    R: Read,
+    W: Write + Send + 'static,
+{
+    info!("Decompressing.");
+
+    let mut writer = GzDecoder::new(output);
     io::copy(&mut input, &mut writer)?;
     writer.finish()?;
     Ok(())
