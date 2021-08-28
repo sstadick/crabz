@@ -36,11 +36,9 @@ Homebrew install coming soon!
 
 ```
 ❯ crabz -h              
-crabz 0.5.1
+crabz 0.5.3
 Seth Stadick
-A small POC program to compress files like pigz.
-
-This will use all threads possible on your system.
+Compress and decompress files
 
 USAGE:
     crabz [FLAGS] [OPTIONS] [FILE]
