@@ -246,3 +246,5 @@ an edge due to the following:
 ## TODOs
 
 - Test with jemalloc
+- Add some form of auto format detection, even just by file extension
+- Implemement something like mgzip
