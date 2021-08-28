@@ -21,8 +21,6 @@ use std::process::exit;
 use structopt::{clap::AppSettings::ColoredHelp, StructOpt};
 use strum::{EnumString, EnumVariantNames, VariantNames};
 
-// Make the feature flags work for `any_zlib` and `snappy`
-
 lazy_static! {
     /// Return the number of cpus as an &str
     pub static ref NUM_CPU: String = num_cpus::get().to_string();
@@ -153,11 +151,11 @@ impl Format {
 #[derive(StructOpt, Debug)]
 #[structopt(name = "crabz", author, global_setting(ColoredHelp), version = built_info::VERSION.as_str())]
 struct Opts {
-    /// Output path to write to, "-" to write to stdout
+    /// Output path to write to, empty or "-" to write to stdout
     #[structopt(short, long)]
     output: Option<PathBuf>,
 
-    /// Input file to read from, "-" to read from stdin
+    /// Input file to read from, empty or "-" to read from stdin
     #[structopt(name = "FILE", parse(from_os_str))]
     file: Option<PathBuf>,
 

@@ -1,6 +1,12 @@
 # 🦀 crabz
 
-Like pigz, but rust.
+
+<p align="center">
+  <a href="https://github.com/sstadick/crabz/actions?query=workflow%3ACheck"><img src="https://github.com/sstadick/crabz/workflows/Check/badge.svg" alt="Build Status"></a>
+  <img src="https://img.shields.io/crates/l/crabz.svg" alt="license">
+  <a href="https://crates.io/crates/crabz"><img src="https://img.shields.io/crates/v/crabz.svg?colorB=319e8c" alt="Version info"></a><br>
+  Like pigz, but rust.
+</p>
 
 A cross platform, fast, compression and decompression tool.
 
@@ -204,4 +210,4 @@ an edge due to the following:
 
 ## TODOs
 
-- Add support for all file formats in `gzp`
+- Test with jemalloc

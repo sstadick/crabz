@@ -1,0 +1,91 @@
+name: Publish
+
+on:
+  push:
+    tags:
+      - "*"
+
+jobs:
+  publish:
+    name: Publish for ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact_name: crabz
+            asset_name: crabz-linux-amd64
+          - os: macos-latest
+            artifact_name: crabz
+            asset_name: crabz-macos-amd64
+          - os: windows-latest
+            artifact_name: crabz.exe
+            asset_name: crabz-windows-amd64
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: extractions/setup-just@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build
+        shell: bash
+        run: |
+          cargo build --release --locked
+
+      - name: Build archive
+        shell: bash
+        run: |
+          staging="${{matrix.asset_name}}-src"
+          mkdir -p "$staging"
+
+          cp {README.md,UNLICENSE,LICENSE-MIT} "$staging/"
+          cp {build.rs,Cargo.toml,Cargo.lock} "$staging/"
+          cp justfile "$staging/"
+          cp -R ./src "./$staging/src"
+
+
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            7z a "${staging}.zip" "$staging"
+            echo "ASSET=${staging}.zip" >> $GITHUB_ENV
+          else
+            tar czf "${staging}.tar.gz" "${staging}"
+            echo "ASSET=${staging}.tar.gz" >> $GITHUB_ENV
+          fi
+
+      - name: Create deb artifact
+        shell: bash
+        run: |
+          if [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
+            cargo install cargo-deb
+            cargo deb
+            deb_path=$(find ./target/debian/ -type f -name 'crabz*')
+            asset_path="${{ matrix.asset_name }}.deb"
+            mv "${deb_path}" "${asset_path}"
+            echo "DEB=${asset_path}" >> $GITHUB_ENV
+          fi
+
+      - name: Upload deb package
+        uses: svenstaro/upload-release-action@v2
+        if: matrix.os == 'ubuntu-latest'
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: ${{ env.DEB }}
+          asset_name: ${{ env.DEB }}
+          tag: ${{ github.ref }}
+
+      - name: Upload src and pgo data to release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: ${{ env.ASSET }}
+          asset_name: ${{ env.ASSET }}
+          tag: ${{ github.ref }}
+
+      - name: Upload binaries to release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: target/release/${{ matrix.artifact_name }}
+          asset_name: ${{ matrix.asset_name }}
+          tag: ${{ github.ref }}
