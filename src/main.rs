@@ -19,7 +19,7 @@ use std::io::{self, BufReader, BufWriter, Read, Write};
 use std::path::PathBuf;
 use std::process::exit;
 use structopt::{clap::AppSettings::ColoredHelp, StructOpt};
-use strum::{EnumString, EnumVariantNames, VariantNames};
+use strum::{EnumString, EnumVariantNames, ToString, VariantNames};
 
 lazy_static! {
     /// Return the number of cpus as an &str
@@ -96,7 +96,7 @@ fn is_broken_pipe(err: &Error) -> bool {
     false
 }
 
-#[derive(EnumString, EnumVariantNames, Debug, Copy, Clone)]
+#[derive(EnumString, EnumVariantNames, ToString, Debug, Copy, Clone)]
 #[strum(serialize_all = "kebab_case")]
 enum Format {
     #[strum(serialize = "gzip", serialize = "gz")]
@@ -219,8 +219,10 @@ where
     W: Write + Send + 'static,
 {
     info!(
-        "Compressing with {} threads at compression level {}.",
-        num_threads, compression_level
+        "Compressing ({}) with {} threads at compression level {}.",
+        format.to_string(),
+        num_threads,
+        compression_level
     );
     let mut writer = format.create_compressor(output, num_threads, compression_level);
     io::copy(&mut input, &mut writer)?;
@@ -234,7 +236,7 @@ where
     R: Read,
     W: Write + Send + 'static,
 {
-    info!("Decompressing.");
+    info!("Decompressing ({}).", format.to_string());
 
     match format {
         Format::Gzip => {
