@@ -6,7 +6,14 @@ A cross platform, fast, compression and decompression tool.
 
 ## Synopsis
 
-This is currently a proof of concept CLI tool using the [`gzp`](https://github.com/sstadick/gzp/) crate. Currently only Gzip is supported.
+This is currently a proof of concept CLI tool using the [`gzp`](https://github.com/sstadick/gzp/) crate.
+
+Supported formats:
+
+- Gzip
+- Zlib
+- Raw Deflate
+- Snap
 
 ## Install
 
@@ -33,7 +40,7 @@ an edge due to the following:
 
 - `crabz` with `deflate_rust` backend is using all Rust only code, which is in theory more secure / safe.
 - `crabz` with `zlib-ng` is easier to install than `pigz` with a `zlib-ng` backend
-- TODO / SOON `crabz` supports more formats than `pigz`
+- `crabz` supports more formats than `pigz`
 - `crabz` is cross platform and can run on windows
 
 ### Flate2 zlib-ng backend
