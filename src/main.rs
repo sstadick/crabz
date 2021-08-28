@@ -145,9 +145,7 @@ impl Format {
     }
 }
 
-/// A small POC program to compress files like pigz.
-///
-/// This will use all threads possible on your system.
+/// Compress and decompress files.
 #[derive(StructOpt, Debug)]
 #[structopt(name = "crabz", author, global_setting(ColoredHelp), version = built_info::VERSION.as_str())]
 struct Opts {
