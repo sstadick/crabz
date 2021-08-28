@@ -245,6 +245,7 @@ an edge due to the following:
 
 ## TODOs
 
+- Make homebrew release
 - Test with jemalloc
 - Add some form of auto format detection, even just by file extension
 - Implemement something like mgzip
