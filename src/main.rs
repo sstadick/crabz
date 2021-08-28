@@ -21,8 +21,6 @@ use std::process::exit;
 use structopt::{clap::AppSettings::ColoredHelp, StructOpt};
 use strum::{EnumString, EnumVariantNames, VariantNames};
 
-// Make the feature flags work for `any_zlib` and `snappy`
-
 lazy_static! {
     /// Return the number of cpus as an &str
     pub static ref NUM_CPU: String = num_cpus::get().to_string();

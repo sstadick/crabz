@@ -210,4 +210,4 @@ an edge due to the following:
 
 ## TODOs
 
-- Add support for all file formats in `gzp`
+- Test with jemalloc
