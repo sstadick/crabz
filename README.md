@@ -27,6 +27,41 @@ Supported formats:
 cargo install crabz
 ```
 
+Or pull a binary / `.deb` from the releases page.
+
+
+Homebrew install coming soon! 
+
+## Usage
+
+```
+❯ crabz -h              
+crabz 0.5.1
+Seth Stadick
+A small POC program to compress files like pigz.
+
+This will use all threads possible on your system.
+
+USAGE:
+    crabz [FLAGS] [OPTIONS] [FILE]
+
+FLAGS:
+    -d, --decompress    Flag to switch to decompressing inputs. Note: this flag may change in future releases
+    -h, --help          Prints help information
+    -V, --version       Prints version information
+
+OPTIONS:
+    -c, --compression-level <compression-level>        Compression level [default: 3]
+    -p, --compression-threads <compression-threads>    Number of compression threads to use [default: 32]
+    -f, --format <format>
+            The format to use [default: gzip]  [possible values: gzip, zlib, deflate,
+            snap]
+    -o, --output <output>                              Output path to write to, empty or "-" to write to stdout
+
+ARGS:
+    <FILE>    Input file to read from, empty or "-" to read from stdin
+```
+
 ## Benchmarks
 
 These benchmarks use the data in `bench-data` catted together 100 times. Run with `bash ./benchmark.sh data.txt`.
