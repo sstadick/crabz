@@ -109,6 +109,7 @@ version = "0.2.1-alpha.0"
 dependencies = [
  "anyhow",
  "env_logger",
+ "flate2",
  "gzp",
  "log",
  "num_cpus",
@@ -190,9 +191,9 @@ dependencies = [
 
 [[package]]
 name = "gzp"
-version = "0.6.0"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "571939fb5216f79cacb9f0af1cf77de3ecf2cf7915ff657eafb22a924f654a08"
+checksum = "5f909261abe95b365feb5929ee196152f813c3d85d6f963e0b04e31cdc9a61cc"
 dependencies = [
  "bytes",
  "flate2",
