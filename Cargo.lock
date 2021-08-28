@@ -191,9 +191,9 @@ dependencies = [
 
 [[package]]
 name = "gzp"
-version = "0.7.0"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f909261abe95b365feb5929ee196152f813c3d85d6f963e0b04e31cdc9a61cc"
+checksum = "b4f1e4231cd5c51602ce2b8a484c1ad182f5bf32ebd607f095e7eb28f36442df"
 dependencies = [
  "bytes",
  "flate2",
