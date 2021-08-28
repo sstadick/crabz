@@ -24,9 +24,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-      - uses: extractions/setup-just@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build
         shell: bash
@@ -41,9 +38,7 @@ jobs:
 
           cp {README.md,UNLICENSE,LICENSE-MIT} "$staging/"
           cp {build.rs,Cargo.toml,Cargo.lock} "$staging/"
-          cp justfile "$staging/"
           cp -R ./src "./$staging/src"
-
 
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
             7z a "${staging}.zip" "$staging"
