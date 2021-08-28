@@ -1,6 +1,6 @@
 [package]
 name = "crabz"
-authors = ["Seth Stadick <sstadick@gmail.com>"]
+authors = ["Seth Stadick"]
 version = "0.3.2-alpha.0"
 edition = "2018"
 license = "Unlicense/MIT"
@@ -17,19 +17,28 @@ name = "crabz"
 path = "src/main.rs"
 
 [features]
-default = ["deflate_zlib_ng"]
-deflate_zlib_ng = ["gzp/deflate_zlib_ng", "flate2/zlib-ng-compat"]
-deflate_zlib = ["gzp/deflate_zlib", "flate2/zlib"]
+default = ["deflate_zlib_ng", "snap_default"]
+
+deflate_zlib_ng = ["gzp/deflate_zlib_ng", "flate2/zlib-ng-compat", "any_zlib"]
+deflate_zlib = ["gzp/deflate_zlib", "flate2/zlib", "any_zlib"]
 deflate_rust = ["gzp/deflate_rust", "flate2/rust_backend"]
+snap_default = ["gzp/snappy_default", "snap", "snappy"]
+
+snappy = [] # internal feature flag
+any_zlib = [] # internal feature flag
 
 [dependencies]
 anyhow = "1.0.43"
+built = "0.5.1"
 env_logger = "0.9.0"
 flate2 = { version = "~1", default-features = false}
-gzp = { version = "0.7.1", default-features = false}
-#gzp = { git = "https://github.com/sstadick/gzp", branch = "feature/sync_mode", no-default-features = true, features = ["deflate_zlib"]}
-#gzp = { path = "../gzp", default-features = false, features = ["deflate_zlib_ng"]}
+gzp = { version = "0.7.2", default-features = false}
+lazy_static = "1.4.0"
 log = "0.4.14"
 num_cpus = "1.13.0"
 structopt = "0.3.22"
+strum = {version = "0.21.0", features = ["derive"]}
+snap = {version = "1.0.5", optional = true}
 
+[build-dependencies]
+built = {version ="0.5.1", features = ["git2"]}
