@@ -254,12 +254,11 @@ where
 
     match format {
         Format::Gzip => {
-            let mut writer = BufWriter::new(output);
             let mut reader = MultiGzDecoder::new(BufReader::new(input));
-            io::copy(&mut reader, &mut writer)?;
+            io::copy(&mut reader, &mut output)?;
         }
         Format::Mgzip => {
-            let mut writer = BufWriter::new(output);
+            let mut writer = output;
             let mut reader = ParDecompressBuilder::<Mgzip>::new()
                 .num_threads(num_threads)
                 .unwrap()
