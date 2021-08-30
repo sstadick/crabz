@@ -1,11 +1,13 @@
 use anyhow::{Error, Result};
 use env_logger::Env;
+use flate2::bufread::MultiGzDecoder;
+use flate2::write::DeflateDecoder;
 #[cfg(feature = "any_zlib")]
 use flate2::write::ZlibDecoder;
-use flate2::write::{DeflateDecoder, GzDecoder};
 #[cfg(feature = "any_zlib")]
 use gzp::deflate::Zlib;
-use gzp::deflate::{Gzip, RawDeflate};
+use gzp::deflate::{Gzip, Mgzip, RawDeflate};
+use gzp::par_decompress::ParDecompressBuilder;
 use gzp::parz::Compression;
 #[cfg(feature = "snappy")]
 use gzp::snap::Snap;
@@ -56,8 +58,8 @@ pub mod built_info {
 }
 
 /// Get a bufferd input reader from stdin or a file
-fn get_input(path: Option<PathBuf>) -> Result<Box<dyn Read>> {
-    let reader: Box<dyn Read> = match path {
+fn get_input(path: Option<PathBuf>) -> Result<Box<dyn Read + Send + 'static>> {
+    let reader: Box<dyn Read + Send + 'static> = match path {
         Some(path) => {
             if path.as_os_str() == "-" {
                 Box::new(BufReader::new(io::stdin()))
@@ -101,6 +103,8 @@ fn is_broken_pipe(err: &Error) -> bool {
 enum Format {
     #[strum(serialize = "gzip", serialize = "gz")]
     Gzip,
+    #[strum(serialize = "mgzip", serialize = "mgz")]
+    Mgzip,
     #[cfg(feature = "any_zlib")]
     #[strum(serialize = "zlib", serialize = "zz")]
     Zlib,
@@ -124,6 +128,10 @@ impl Format {
     {
         match self {
             Format::Gzip => ZBuilder::<Gzip, _>::new()
+                .num_threads(num_threads)
+                .compression_level(Compression::new(compression_level))
+                .from_writer(writer),
+            Format::Mgzip => ZBuilder::<Mgzip, _>::new()
                 .num_threads(num_threads)
                 .compression_level(Compression::new(compression_level))
                 .from_writer(writer),
@@ -181,9 +189,12 @@ fn main() -> Result<()> {
     }
 
     if opts.decompress {
-        if let Err(err) =
-            run_decompress(get_input(opts.file)?, get_output(opts.output)?, opts.format)
-        {
+        if let Err(err) = run_decompress(
+            get_input(opts.file)?,
+            get_output(opts.output)?,
+            opts.format,
+            opts.compression_threads,
+        ) {
             if is_broken_pipe(&err) {
                 exit(0)
             }
@@ -229,18 +240,31 @@ where
 }
 
 /// Run the compression program, returning any found errors
-fn run_decompress<R, W>(mut input: R, mut output: W, format: Format) -> Result<()>
+fn run_decompress<R, W>(
+    mut input: R,
+    mut output: W,
+    format: Format,
+    num_threads: usize,
+) -> Result<()>
 where
-    R: Read,
+    R: Read + Send + 'static,
     W: Write + Send + 'static,
 {
     info!("Decompressing ({}).", format.to_string());
 
     match format {
         Format::Gzip => {
-            let mut writer = GzDecoder::new(output);
-            io::copy(&mut input, &mut writer)?;
-            writer.finish()?;
+            let mut writer = BufWriter::new(output);
+            let mut reader = MultiGzDecoder::new(BufReader::new(input));
+            io::copy(&mut reader, &mut writer)?;
+        }
+        Format::Mgzip => {
+            let mut writer = BufWriter::new(output);
+            let mut reader = ParDecompressBuilder::<Mgzip>::new()
+                .num_threads(num_threads)
+                .unwrap()
+                .from_reader(input);
+            io::copy(&mut reader, &mut writer);
         }
         #[cfg(feature = "any_zlib")]
         Format::Zlib => {
