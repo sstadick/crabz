@@ -254,6 +254,7 @@ where
 
     match format {
         Format::Gzip => {
+            // TODO: make sure using multigzdecoder makes it into main branch
             let mut reader = MultiGzDecoder::new(BufReader::new(input));
             io::copy(&mut reader, &mut output)?;
         }
