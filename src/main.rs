@@ -7,8 +7,8 @@ use flate2::write::ZlibDecoder;
 #[cfg(feature = "any_zlib")]
 use gzp::deflate::Zlib;
 use gzp::deflate::{Gzip, Mgzip, RawDeflate};
-use gzp::par_decompress::ParDecompressBuilder;
-use gzp::parz::Compression;
+use gzp::par::compress::Compression;
+use gzp::par::decompress::ParDecompressBuilder;
 #[cfg(feature = "snappy")]
 use gzp::snap::Snap;
 use gzp::{ZBuilder, ZWriter};
