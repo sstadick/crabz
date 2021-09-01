@@ -23,6 +23,8 @@ use std::process::exit;
 use structopt::{clap::AppSettings::ColoredHelp, StructOpt};
 use strum::{EnumString, EnumVariantNames, ToString, VariantNames};
 
+const BUFFERSIZE: usize = 64 * 1024;
+
 lazy_static! {
     /// Return the number of cpus as an &str
     pub static ref NUM_CPU: String = num_cpus::get().to_string();
@@ -57,17 +59,18 @@ pub mod built_info {
     }
 }
 
+
 /// Get a bufferd input reader from stdin or a file
 fn get_input(path: Option<PathBuf>) -> Result<Box<dyn Read + Send + 'static>> {
     let reader: Box<dyn Read + Send + 'static> = match path {
         Some(path) => {
             if path.as_os_str() == "-" {
-                Box::new(BufReader::new(io::stdin()))
+                Box::new(BufReader::with_capacity(BUFFERSIZE, io::stdin()))
             } else {
-                Box::new(BufReader::new(File::open(path)?))
+                Box::new(BufReader::with_capacity(BUFFERSIZE, File::open(path)?))
             }
         }
-        None => Box::new(BufReader::new(io::stdin())),
+        None => Box::new(BufReader::with_capacity(BUFFERSIZE, io::stdin())),
     };
     Ok(reader)
 }
@@ -77,12 +80,12 @@ fn get_output(path: Option<PathBuf>) -> Result<Box<dyn Write + Send + 'static>> 
     let writer: Box<dyn Write + Send + 'static> = match path {
         Some(path) => {
             if path.as_os_str() == "-" {
-                Box::new(BufWriter::new(io::stdout()))
+                Box::new(BufWriter::with_capacity(BUFFERSIZE,io::stdout()))
             } else {
-                Box::new(BufWriter::new(File::create(path)?))
+                Box::new(BufWriter::with_capacity(BUFFERSIZE,File::create(path)?))
             }
         }
-        None => Box::new(BufWriter::new(io::stdout())),
+        None => Box::new(BufWriter::with_capacity(BUFFERSIZE,io::stdout())),
     };
     Ok(writer)
 }
@@ -276,6 +279,9 @@ where
     R: Read + Send + 'static,
     W: Write + Send + 'static,
 {
+    // TODO: customize this message on a per type basis or just drop logger altogether
+    // TODO: make passing - look for stdin / stdout and create similar to gzip behaviour otherwise
+    // TODO: check if TTY
     info!("Decompressing ({}) with {} threads available.", format.to_string(), num_threads);
 
     match format {
@@ -285,12 +291,11 @@ where
             io::copy(&mut reader, &mut output)?;
         }
         Format::Bgzf => {
-            let mut writer = output;
             let mut reader = ParDecompressBuilder::<Bgzf>::new()
                 .num_threads(num_threads)
                 .unwrap()
                 .from_reader(input);
-            io::copy(&mut reader, &mut writer)?;
+            io::copy(&mut reader, &mut output)?;
         }
         Format::Mgzip => {
             let mut writer = output;
