@@ -6,7 +6,7 @@ use flate2::write::DeflateDecoder;
 use flate2::write::ZlibDecoder;
 #[cfg(feature = "any_zlib")]
 use gzp::deflate::Zlib;
-use gzp::deflate::{Gzip, Mgzip, RawDeflate};
+use gzp::deflate::{Gzip, Mgzip, RawDeflate, Bgzf};
 use gzp::par::compress::Compression;
 use gzp::par::decompress::ParDecompressBuilder;
 #[cfg(feature = "snappy")]
@@ -103,6 +103,9 @@ fn is_broken_pipe(err: &Error) -> bool {
 enum Format {
     #[strum(serialize = "gzip", serialize = "gz")]
     Gzip,
+    // TODO: is bgz valid?
+    #[strum(serialize = "bgzf", serialize = "bgz")]
+    Bgzf,
     #[strum(serialize = "mgzip", serialize = "mgz")]
     Mgzip,
     #[cfg(feature = "any_zlib")]
@@ -131,6 +134,10 @@ impl Format {
                 .num_threads(num_threads)
                 .compression_level(Compression::new(compression_level))
                 .from_writer(writer),
+            Format::Bgzf => ZBuilder::<Bgzf, _>::new()
+                .num_threads(num_threads)
+                .compression_level(Compression::new(compression_level))
+                .from_writer(writer),
             Format::Mgzip => ZBuilder::<Mgzip, _>::new()
                 .num_threads(num_threads)
                 .compression_level(Compression::new(compression_level))
@@ -149,6 +156,24 @@ impl Format {
                 .num_threads(num_threads)
                 .compression_level(Compression::new(compression_level))
                 .from_writer(writer),
+        }
+    }
+
+    fn get_highest_allowd_compression_leval(&self) -> u32 {
+        match self {
+            Format::Gzip => 9,
+            #[cfg(feature = "libdeflate")]
+            Format::Bgzf => 12,
+            #[cfg(not(feature = "libdeflate"))]
+            Format::Bgzf => 9,
+            #[cfg(feature = "libdeflate")]
+            Format::Mgzip => 12,
+            #[cfg(not(feature = "libdeflate"))]
+            Format::Mgzip => 9,
+            Format::Zlib => 9,
+            Format::RawDeflate => 9,
+            // compression level is ignored
+            Format::Snap => u32::MAX
         }
     }
 }
@@ -170,10 +195,11 @@ struct Opts {
     format: Format,
 
     /// Compression level
-    #[structopt(short, long, default_value = "3")]
+    #[structopt(short = "l", long, default_value = "3")]
     compression_level: u32,
 
-    /// Number of compression threads to use.
+    /// Number of compression threads to use, or if decompressing a format that allow for multi-threaded
+    /// decompression, the number to use. Note that > 4 threads for decompression doesn't seem to help.
     #[structopt(short = "p", long, default_value = NUM_CPU.as_str())]
     compression_threads: usize,
 
@@ -184,7 +210,7 @@ struct Opts {
 
 fn main() -> Result<()> {
     let opts = setup();
-    if opts.compression_level > 9 {
+    if opts.compression_level > opts.format.get_highest_allowd_compression_leval() {
         return Err(Error::msg("Invalid compression level"));
     }
 
@@ -250,7 +276,7 @@ where
     R: Read + Send + 'static,
     W: Write + Send + 'static,
 {
-    info!("Decompressing ({}).", format.to_string());
+    info!("Decompressing ({}) with {} threads available.", format.to_string(), num_threads);
 
     match format {
         Format::Gzip => {
@@ -258,13 +284,21 @@ where
             let mut reader = MultiGzDecoder::new(BufReader::new(input));
             io::copy(&mut reader, &mut output)?;
         }
+        Format::Bgzf => {
+            let mut writer = output;
+            let mut reader = ParDecompressBuilder::<Bgzf>::new()
+                .num_threads(num_threads)
+                .unwrap()
+                .from_reader(input);
+            io::copy(&mut reader, &mut writer)?;
+        }
         Format::Mgzip => {
             let mut writer = output;
             let mut reader = ParDecompressBuilder::<Mgzip>::new()
                 .num_threads(num_threads)
                 .unwrap()
                 .from_reader(input);
-            io::copy(&mut reader, &mut writer);
+            io::copy(&mut reader, &mut writer)?;
         }
         #[cfg(feature = "any_zlib")]
         Format::Zlib => {

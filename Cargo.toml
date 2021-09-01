@@ -17,12 +17,13 @@ name = "crabz"
 path = "src/main.rs"
 
 [features]
-default = ["deflate_zlib_ng", "snap_default"]
+default = ["deflate_zlib_ng", "snap_default", "libdeflate"]
 
 deflate_zlib_ng = ["gzp/deflate_zlib_ng", "flate2/zlib-ng-compat", "any_zlib"]
 deflate_zlib = ["gzp/deflate_zlib", "flate2/zlib", "any_zlib"]
 deflate_rust = ["gzp/deflate_rust", "flate2/rust_backend"]
 snap_default = ["gzp/snappy_default", "snap", "snappy"]
+libdeflate = ["gzp/libdeflate"]
 
 snappy = [] # internal feature flag
 any_zlib = [] # internal feature flag
