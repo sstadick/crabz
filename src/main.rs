@@ -1,27 +1,29 @@
 use anyhow::{Error, Result};
 use env_logger::Env;
-use flate2::bufread::MultiGzDecoder;
+use flate2::read::MultiGzDecoder;
 use flate2::write::DeflateDecoder;
-#[cfg(feature = "any_zlib")]
-use flate2::write::ZlibDecoder;
-#[cfg(feature = "any_zlib")]
-use gzp::deflate::Zlib;
 use gzp::deflate::{Gzip, Mgzip, RawDeflate, Bgzf};
 use gzp::par::compress::Compression;
 use gzp::par::decompress::ParDecompressBuilder;
-#[cfg(feature = "snappy")]
-use gzp::snap::Snap;
 use gzp::{ZBuilder, ZWriter};
 use lazy_static::lazy_static;
 use log::info;
-#[cfg(feature = "snappy")]
-use snap::read::FrameDecoder;
 use std::fs::File;
 use std::io::{self, BufReader, BufWriter, Read, Write};
 use std::path::PathBuf;
 use std::process::exit;
 use structopt::{clap::AppSettings::ColoredHelp, StructOpt};
 use strum::{EnumString, EnumVariantNames, ToString, VariantNames};
+
+#[cfg(feature = "any_zlib")]
+use flate2::write::ZlibDecoder;
+#[cfg(feature = "any_zlib")]
+use gzp::deflate::Zlib;
+
+#[cfg(feature = "snappy")]
+use snap::read::FrameDecoder;
+#[cfg(feature = "snappy")]
+use gzp::snap::Snap;
 
 const BUFFERSIZE: usize = 64 * 1024;
 
@@ -80,12 +82,12 @@ fn get_output(path: Option<PathBuf>) -> Result<Box<dyn Write + Send + 'static>> 
     let writer: Box<dyn Write + Send + 'static> = match path {
         Some(path) => {
             if path.as_os_str() == "-" {
-                Box::new(BufWriter::with_capacity(BUFFERSIZE,io::stdout()))
+                Box::new(BufWriter::with_capacity(BUFFERSIZE, io::stdout()))
             } else {
-                Box::new(BufWriter::with_capacity(BUFFERSIZE,File::create(path)?))
+                Box::new(BufWriter::with_capacity(BUFFERSIZE, File::create(path)?))
             }
         }
-        None => Box::new(BufWriter::with_capacity(BUFFERSIZE,io::stdout())),
+        None => Box::new(BufWriter::with_capacity(BUFFERSIZE, io::stdout())),
     };
     Ok(writer)
 }
@@ -173,9 +175,11 @@ impl Format {
             Format::Mgzip => 12,
             #[cfg(not(feature = "libdeflate"))]
             Format::Mgzip => 9,
+            #[cfg(feature = "any_zlib")]
             Format::Zlib => 9,
             Format::RawDeflate => 9,
             // compression level is ignored
+            #[cfg(feature = "snappy")]
             Format::Snap => u32::MAX
         }
     }
@@ -198,7 +202,7 @@ struct Opts {
     format: Format,
 
     /// Compression level
-    #[structopt(short = "l", long, default_value = "3")]
+    #[structopt(short = "l", long, default_value = "6")]
     compression_level: u32,
 
     /// Number of compression threads to use, or if decompressing a format that allow for multi-threaded
@@ -279,31 +283,35 @@ where
     R: Read + Send + 'static,
     W: Write + Send + 'static,
 {
-    // TODO: customize this message on a per type basis or just drop logger altogether
     // TODO: make passing - look for stdin / stdout and create similar to gzip behaviour otherwise
-    // TODO: check if TTY
     info!("Decompressing ({}) with {} threads available.", format.to_string(), num_threads);
 
     match format {
         Format::Gzip => {
-            // TODO: make sure using multigzdecoder makes it into main branch
-            let mut reader = MultiGzDecoder::new(BufReader::new(input));
+            let mut reader = MultiGzDecoder::new(input);
             io::copy(&mut reader, &mut output)?;
         }
         Format::Bgzf => {
-            let mut reader = ParDecompressBuilder::<Bgzf>::new()
-                .num_threads(num_threads)
-                .unwrap()
-                .from_reader(input);
+            let mut reader: Box<dyn Read> = if num_threads == 0 {
+                Box::new(MultiGzDecoder::new(input))
+            } else {
+                Box::new(ParDecompressBuilder::<Bgzf>::new()
+                    .num_threads(num_threads)
+                    .unwrap()
+                    .from_reader(input))
+            };
             io::copy(&mut reader, &mut output)?;
         }
         Format::Mgzip => {
-            let mut writer = output;
-            let mut reader = ParDecompressBuilder::<Mgzip>::new()
-                .num_threads(num_threads)
-                .unwrap()
-                .from_reader(input);
-            io::copy(&mut reader, &mut writer)?;
+            let mut reader: Box<dyn Read> = if num_threads == 0 {
+                Box::new(MultiGzDecoder::new(input))
+            } else {
+                Box::new(ParDecompressBuilder::<Mgzip>::new()
+                    .num_threads(num_threads)
+                    .unwrap()
+                    .from_reader(input))
+            };
+            io::copy(&mut reader, &mut output)?;
         }
         #[cfg(feature = "any_zlib")]
         Format::Zlib => {

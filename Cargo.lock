@@ -239,7 +239,9 @@ dependencies = [
 
 [[package]]
 name = "gzp"
-version = "0.7.3-alpha.0"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4d1a3b71e2bbec2b1b384542b5dba2e58c485a4eb4b1e00f2fcea21598a0d2c3"
 dependencies = [
  "byteorder",
  "bytes",
