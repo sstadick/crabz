@@ -18,25 +18,44 @@ Supported formats:
 
 - Gzip
 - Zlib
+- Mgzip
+- BGZF
 - Raw Deflate
 - Snap
 
 ## Install
 
+* Homebrew / Linuxbrew
+
+```
+brew tap sstadick/crabz
+brew install crabz
+```
+
+* Debian (Ubuntu)
+  
+```
+curl -LO https://github.com/sstadick/crabz/releases/download/<latest>/crabz-linux-amd64.deb
+sudo dpkg -i crabz-linux-amd64.deb
+```
+
+* Cargo
+
 ```
 cargo install crabz
 ```
 
-Or pull a binary / `.deb` from the releases page.
+* Conda
 
+```
+conda install -c bioconda crabz
+```
 
-Homebrew install coming soon! 
 
 ## Usage
 
 ```
 ❯ crabz -h              
-crabz 0.5.3
 Seth Stadick
 Compress and decompress files
 
@@ -49,11 +68,14 @@ FLAGS:
     -V, --version       Prints version information
 
 OPTIONS:
-    -c, --compression-level <compression-level>        Compression level [default: 3]
-    -p, --compression-threads <compression-threads>    Number of compression threads to use [default: 32]
+    -l, --compression-level <compression-level>        Compression level [default: 6]
+    -p, --compression-threads <compression-threads>
+            Number of compression threads to use, or if decompressing a format that allow for multi-threaded
+            decompression, the number to use. Note that > 4 threads for decompression doesn't seem to help [default:
+            32]
     -f, --format <format>
-            The format to use [default: gzip]  [possible values: gzip, zlib, deflate,
-            snap]
+            The format to use [default: gzip]  [possible values: gzip, bgzf, mgzip,
+            zlib, deflate, snap]
     -o, --output <output>                              Output path to write to, empty or "-" to write to stdout
 
 ARGS:
@@ -81,6 +103,15 @@ an edge due to the following:
 - `crabz` with `zlib-ng` is easier to install than `pigz` with a `zlib-ng` backend
 - `crabz` supports more formats than `pigz`
 - `crabz` is cross platform and can run on windows
+
+With regards to block formats like Mgzip and BGZF, `crabz` is using `libdeflater` by default which excels at compressing and
+decompression known-sized blocks. This makes block compression formats very fast at a small loss to the compression ratio.
+
+Comparing `crabz` against tools like `bgzip`, which also defaults to `libdeflater` as a backend shows them within a few percent of
+eachother.
+
+As `crabz` is just a wrapper for the `gzp` library, the most exciting thing about these benchmarks is that `gzp` is on par with
+best in class CLI tools for multi-threaded compression and decompression as a library.
 
 ### Flate2 zlib-ng backend
 
@@ -240,10 +271,65 @@ an edge due to the following:
 | `crabz -d < ./data.9.txt.gz` | 1.613 ± 0.014 |   1.596 |   1.641 | 1.01 ± 0.01 |
 | `pigz -d < ./data.9.txt.gz`  | 1.767 ± 0.012 |   1.748 |   1.787 | 1.11 ± 0.01 |
 
+### Block Formats with libdeflater
+
+#### Decompression
+
+| Command                                                |      Mean [s] | Min [s] | Max [s] |    Relative |
+| :----------------------------------------------------- | ------------: | ------: | ------: | ----------: |
+| `crabz -p 1 -d -f mgzip ./bdata.3.txt.gz > data.txt`   | 1.221 ± 0.164 |   1.073 |   1.397 | 2.32 ± 0.31 |
+| `pigz -d -c ./bdata.3.txt.gz > data.txt`               | 2.415 ± 0.063 |   2.347 |   2.472 | 4.58 ± 0.14 |
+| `crabz -p 1 -d -f mgzip ./bdata.6.txt.gz > data.txt`   | 1.256 ± 0.063 |   1.200 |   1.325 | 2.38 ± 0.13 |
+| `pigz -d -c ./bdata.6.txt.gz > data.txt`               | 2.513 ± 0.052 |   2.467 |   2.569 | 4.77 ± 0.13 |
+| `crabz -p 1 -d -f mgzip ./bdata.9.txt.gz > data.txt`   | 1.147 ± 0.065 |   1.094 |   1.219 | 2.18 ± 0.13 |
+| `pigz -d -c ./bdata.9.txt.gz > data.txt`               | 2.394 ± 0.118 |   2.262 |   2.488 | 4.54 ± 0.24 |
+| `crabz -p 1 -d -f mgzip ./bdata.12.txt.gz > data.txt`  | 1.165 ± 0.074 |   1.106 |   1.248 | 2.21 ± 0.15 |
+| `pigz -d -c ./bdata.12.txt.gz > data.txt`              | 2.457 ± 0.067 |   2.408 |   2.534 | 4.66 ± 0.15 |
+| `crabz -p 2 -d -f mgzip ./bdata.3.txt.gz > data.txt`   | 0.634 ± 0.008 |   0.628 |   0.642 | 1.20 ± 0.03 |
+| `pigz -d -c ./bdata.3.txt.gz > data.txt`               | 2.379 ± 0.012 |   2.368 |   2.391 | 4.51 ± 0.08 |
+| `crabz -p 2 -d -f mgzip ./bdata.6.txt.gz > data.txt`   | 0.645 ± 0.015 |   0.629 |   0.658 | 1.22 ± 0.03 |
+| `pigz -d -c ./bdata.6.txt.gz > data.txt`               | 2.438 ± 0.073 |   2.356 |   2.497 | 4.62 ± 0.16 |
+| `crabz -p 2 -d -f mgzip ./bdata.9.txt.gz > data.txt`   | 0.659 ± 0.015 |   0.644 |   0.674 | 1.25 ± 0.04 |
+| `pigz -d -c ./bdata.9.txt.gz > data.txt`               | 2.451 ± 0.075 |   2.400 |   2.538 | 4.65 ± 0.16 |
+| `crabz -p 2 -d -f mgzip ./bdata.12.txt.gz > data.txt`  | 0.656 ± 0.015 |   0.647 |   0.673 | 1.24 ± 0.04 |
+| `pigz -d -c ./bdata.12.txt.gz > data.txt`              | 2.450 ± 0.045 |   2.412 |   2.500 | 4.65 ± 0.12 |
+| `crabz -p 4 -d -f mgzip ./bdata.3.txt.gz > data.txt`   | 0.577 ± 0.024 |   0.554 |   0.603 | 1.10 ± 0.05 |
+| `pigz -d -c ./bdata.3.txt.gz > data.txt`               | 2.459 ± 0.052 |   2.420 |   2.518 | 4.66 ± 0.13 |
+| `crabz -p 4 -d -f mgzip ./bdata.6.txt.gz > data.txt`   | 0.559 ± 0.024 |   0.531 |   0.576 | 1.06 ± 0.05 |
+| `pigz -d -c ./bdata.6.txt.gz > data.txt`               | 2.538 ± 0.044 |   2.502 |   2.587 | 4.81 ± 0.12 |
+| `crabz -p 4 -d -f mgzip ./bdata.9.txt.gz > data.txt`   | 0.552 ± 0.011 |   0.539 |   0.560 | 1.05 ± 0.03 |
+| `pigz -d -c ./bdata.9.txt.gz > data.txt`               | 2.402 ± 0.018 |   2.385 |   2.420 | 4.56 ± 0.08 |
+| `crabz -p 4 -d -f mgzip ./bdata.12.txt.gz > data.txt`  | 0.592 ± 0.040 |   0.546 |   0.616 | 1.12 ± 0.08 |
+| `pigz -d -c ./bdata.12.txt.gz > data.txt`              | 2.525 ± 0.038 |   2.484 |   2.558 | 4.79 ± 0.11 |
+| `crabz -p 8 -d -f mgzip ./bdata.3.txt.gz > data.txt`   | 0.563 ± 0.013 |   0.548 |   0.571 | 1.07 ± 0.03 |
+| `pigz -d -c ./bdata.3.txt.gz > data.txt`               | 2.490 ± 0.126 |   2.369 |   2.621 | 4.72 ± 0.25 |
+| `crabz -p 8 -d -f mgzip ./bdata.6.txt.gz > data.txt`   | 0.552 ± 0.018 |   0.533 |   0.569 | 1.05 ± 0.04 |
+| `pigz -d -c ./bdata.6.txt.gz > data.txt`               | 2.531 ± 0.115 |   2.417 |   2.647 | 4.80 ± 0.23 |
+| `crabz -p 8 -d -f mgzip ./bdata.9.txt.gz > data.txt`   | 0.603 ± 0.029 |   0.583 |   0.636 | 1.14 ± 0.06 |
+| `pigz -d -c ./bdata.9.txt.gz > data.txt`               | 2.483 ± 0.042 |   2.435 |   2.515 | 4.71 ± 0.11 |
+| `crabz -p 8 -d -f mgzip ./bdata.12.txt.gz > data.txt`  | 0.527 ± 0.009 |   0.519 |   0.537 |        1.00 |
+| `pigz -d -c ./bdata.12.txt.gz > data.txt`              | 2.524 ± 0.093 |   2.417 |   2.583 | 4.79 ± 0.19 |
+| `crabz -p 16 -d -f mgzip ./bdata.3.txt.gz > data.txt`  | 0.603 ± 0.058 |   0.551 |   0.665 | 1.14 ± 0.11 |
+| `pigz -d -c ./bdata.3.txt.gz > data.txt`               | 2.392 ± 0.007 |   2.384 |   2.397 | 4.54 ± 0.08 |
+| `crabz -p 16 -d -f mgzip ./bdata.6.txt.gz > data.txt`  | 0.611 ± 0.065 |   0.565 |   0.686 | 1.16 ± 0.13 |
+| `pigz -d -c ./bdata.6.txt.gz > data.txt`               | 2.593 ± 0.148 |   2.427 |   2.712 | 4.92 ± 0.29 |
+| `crabz -p 16 -d -f mgzip ./bdata.9.txt.gz > data.txt`  | 0.564 ± 0.027 |   0.541 |   0.594 | 1.07 ± 0.05 |
+| `pigz -d -c ./bdata.9.txt.gz > data.txt`               | 2.426 ± 0.023 |   2.404 |   2.450 | 4.60 ± 0.09 |
+| `crabz -p 16 -d -f mgzip ./bdata.12.txt.gz > data.txt` | 0.601 ± 0.020 |   0.582 |   0.623 | 1.14 ± 0.04 |
+| `pigz -d -c ./bdata.12.txt.gz > data.txt`              | 2.528 ± 0.022 |   2.507 |   2.550 | 4.80 ± 0.09 |
+| `crabz -p 32 -d -f mgzip ./bdata.3.txt.gz > data.txt`  | 0.595 ± 0.019 |   0.577 |   0.614 | 1.13 ± 0.04 |
+| `pigz -d -c ./bdata.3.txt.gz > data.txt`               | 2.544 ± 0.107 |   2.422 |   2.621 | 4.83 ± 0.22 |
+| `crabz -p 32 -d -f mgzip ./bdata.6.txt.gz > data.txt`  | 0.601 ± 0.021 |   0.586 |   0.626 | 1.14 ± 0.05 |
+| `pigz -d -c ./bdata.6.txt.gz > data.txt`               | 2.519 ± 0.114 |   2.435 |   2.649 | 4.78 ± 0.23 |
+| `crabz -p 32 -d -f mgzip ./bdata.9.txt.gz > data.txt`  | 0.565 ± 0.023 |   0.539 |   0.579 | 1.07 ± 0.05 |
+| `pigz -d -c ./bdata.9.txt.gz > data.txt`               | 2.487 ± 0.064 |   2.415 |   2.540 | 4.72 ± 0.15 |
+| `crabz -p 32 -d -f mgzip ./bdata.12.txt.gz > data.txt` | 0.557 ± 0.013 |   0.548 |   0.571 | 1.06 ± 0.03 |
+| `pigz -d -c ./bdata.12.txt.gz > data.txt`              | 2.505 ± 0.105 |   2.442 |   2.626 | 4.75 ± 0.22 |
+
+
 
 ## TODOs
 
-- Make homebrew release
 - Test with jemalloc
 - Add some form of auto format detection, even just by file extension
-- Implemement something like mgzip
+

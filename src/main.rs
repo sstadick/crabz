@@ -1,25 +1,31 @@
 use anyhow::{Error, Result};
 use env_logger::Env;
-#[cfg(feature = "any_zlib")]
-use flate2::write::ZlibDecoder;
-use flate2::write::{DeflateDecoder, GzDecoder};
-#[cfg(feature = "any_zlib")]
-use gzp::deflate::Zlib;
-use gzp::deflate::{Gzip, RawDeflate};
-use gzp::parz::Compression;
-#[cfg(feature = "snappy")]
-use gzp::snap::Snap;
+use flate2::read::MultiGzDecoder;
+use flate2::write::DeflateDecoder;
+use gzp::deflate::{Bgzf, Gzip, Mgzip, RawDeflate};
+use gzp::par::compress::Compression;
+use gzp::par::decompress::ParDecompressBuilder;
 use gzp::{ZBuilder, ZWriter};
 use lazy_static::lazy_static;
 use log::info;
-#[cfg(feature = "snappy")]
-use snap::read::FrameDecoder;
 use std::fs::File;
 use std::io::{self, BufReader, BufWriter, Read, Write};
 use std::path::PathBuf;
 use std::process::exit;
 use structopt::{clap::AppSettings::ColoredHelp, StructOpt};
 use strum::{EnumString, EnumVariantNames, ToString, VariantNames};
+
+#[cfg(feature = "any_zlib")]
+use flate2::write::ZlibDecoder;
+#[cfg(feature = "any_zlib")]
+use gzp::deflate::Zlib;
+
+#[cfg(feature = "snappy")]
+use gzp::snap::Snap;
+#[cfg(feature = "snappy")]
+use snap::read::FrameDecoder;
+
+const BUFFERSIZE: usize = 64 * 1024;
 
 lazy_static! {
     /// Return the number of cpus as an &str
@@ -56,16 +62,16 @@ pub mod built_info {
 }
 
 /// Get a bufferd input reader from stdin or a file
-fn get_input(path: Option<PathBuf>) -> Result<Box<dyn Read>> {
-    let reader: Box<dyn Read> = match path {
+fn get_input(path: Option<PathBuf>) -> Result<Box<dyn Read + Send + 'static>> {
+    let reader: Box<dyn Read + Send + 'static> = match path {
         Some(path) => {
             if path.as_os_str() == "-" {
-                Box::new(BufReader::new(io::stdin()))
+                Box::new(BufReader::with_capacity(BUFFERSIZE, io::stdin()))
             } else {
-                Box::new(BufReader::new(File::open(path)?))
+                Box::new(BufReader::with_capacity(BUFFERSIZE, File::open(path)?))
             }
         }
-        None => Box::new(BufReader::new(io::stdin())),
+        None => Box::new(BufReader::with_capacity(BUFFERSIZE, io::stdin())),
     };
     Ok(reader)
 }
@@ -75,12 +81,12 @@ fn get_output(path: Option<PathBuf>) -> Result<Box<dyn Write + Send + 'static>> 
     let writer: Box<dyn Write + Send + 'static> = match path {
         Some(path) => {
             if path.as_os_str() == "-" {
-                Box::new(BufWriter::new(io::stdout()))
+                Box::new(BufWriter::with_capacity(BUFFERSIZE, io::stdout()))
             } else {
-                Box::new(BufWriter::new(File::create(path)?))
+                Box::new(BufWriter::with_capacity(BUFFERSIZE, File::create(path)?))
             }
         }
-        None => Box::new(BufWriter::new(io::stdout())),
+        None => Box::new(BufWriter::with_capacity(BUFFERSIZE, io::stdout())),
     };
     Ok(writer)
 }
@@ -101,6 +107,11 @@ fn is_broken_pipe(err: &Error) -> bool {
 enum Format {
     #[strum(serialize = "gzip", serialize = "gz")]
     Gzip,
+    // TODO: is bgz valid?
+    #[strum(serialize = "bgzf", serialize = "bgz")]
+    Bgzf,
+    #[strum(serialize = "mgzip", serialize = "mgz")]
+    Mgzip,
     #[cfg(feature = "any_zlib")]
     #[strum(serialize = "zlib", serialize = "zz")]
     Zlib,
@@ -127,6 +138,14 @@ impl Format {
                 .num_threads(num_threads)
                 .compression_level(Compression::new(compression_level))
                 .from_writer(writer),
+            Format::Bgzf => ZBuilder::<Bgzf, _>::new()
+                .num_threads(num_threads)
+                .compression_level(Compression::new(compression_level))
+                .from_writer(writer),
+            Format::Mgzip => ZBuilder::<Mgzip, _>::new()
+                .num_threads(num_threads)
+                .compression_level(Compression::new(compression_level))
+                .from_writer(writer),
             #[cfg(feature = "any_zlib")]
             Format::Zlib => ZBuilder::<Zlib, _>::new()
                 .num_threads(num_threads)
@@ -141,6 +160,26 @@ impl Format {
                 .num_threads(num_threads)
                 .compression_level(Compression::new(compression_level))
                 .from_writer(writer),
+        }
+    }
+
+    fn get_highest_allowd_compression_leval(&self) -> u32 {
+        match self {
+            Format::Gzip => 9,
+            #[cfg(feature = "libdeflate")]
+            Format::Bgzf => 12,
+            #[cfg(not(feature = "libdeflate"))]
+            Format::Bgzf => 9,
+            #[cfg(feature = "libdeflate")]
+            Format::Mgzip => 12,
+            #[cfg(not(feature = "libdeflate"))]
+            Format::Mgzip => 9,
+            #[cfg(feature = "any_zlib")]
+            Format::Zlib => 9,
+            Format::RawDeflate => 9,
+            // compression level is ignored
+            #[cfg(feature = "snappy")]
+            Format::Snap => u32::MAX,
         }
     }
 }
@@ -162,10 +201,11 @@ struct Opts {
     format: Format,
 
     /// Compression level
-    #[structopt(short, long, default_value = "3")]
+    #[structopt(short = "l", long, default_value = "6")]
     compression_level: u32,
 
-    /// Number of compression threads to use.
+    /// Number of compression threads to use, or if decompressing a format that allow for multi-threaded
+    /// decompression, the number to use. Note that > 4 threads for decompression doesn't seem to help.
     #[structopt(short = "p", long, default_value = NUM_CPU.as_str())]
     compression_threads: usize,
 
@@ -176,14 +216,17 @@ struct Opts {
 
 fn main() -> Result<()> {
     let opts = setup();
-    if opts.compression_level > 9 {
+    if opts.compression_level > opts.format.get_highest_allowd_compression_leval() {
         return Err(Error::msg("Invalid compression level"));
     }
 
     if opts.decompress {
-        if let Err(err) =
-            run_decompress(get_input(opts.file)?, get_output(opts.output)?, opts.format)
-        {
+        if let Err(err) = run_decompress(
+            get_input(opts.file)?,
+            get_output(opts.output)?,
+            opts.format,
+            opts.compression_threads,
+        ) {
             if is_broken_pipe(&err) {
                 exit(0)
             }
@@ -229,18 +272,53 @@ where
 }
 
 /// Run the compression program, returning any found errors
-fn run_decompress<R, W>(mut input: R, mut output: W, format: Format) -> Result<()>
+fn run_decompress<R, W>(
+    mut input: R,
+    mut output: W,
+    format: Format,
+    num_threads: usize,
+) -> Result<()>
 where
-    R: Read,
+    R: Read + Send + 'static,
     W: Write + Send + 'static,
 {
-    info!("Decompressing ({}).", format.to_string());
+    // TODO: make passing - look for stdin / stdout and create similar to gzip behaviour otherwise
+    info!(
+        "Decompressing ({}) with {} threads available.",
+        format.to_string(),
+        num_threads
+    );
 
     match format {
         Format::Gzip => {
-            let mut writer = GzDecoder::new(output);
-            io::copy(&mut input, &mut writer)?;
-            writer.finish()?;
+            let mut reader = MultiGzDecoder::new(input);
+            io::copy(&mut reader, &mut output)?;
+        }
+        Format::Bgzf => {
+            let mut reader: Box<dyn Read> = if num_threads == 0 {
+                Box::new(MultiGzDecoder::new(input))
+            } else {
+                Box::new(
+                    ParDecompressBuilder::<Bgzf>::new()
+                        .num_threads(num_threads)
+                        .unwrap()
+                        .from_reader(input),
+                )
+            };
+            io::copy(&mut reader, &mut output)?;
+        }
+        Format::Mgzip => {
+            let mut reader: Box<dyn Read> = if num_threads == 0 {
+                Box::new(MultiGzDecoder::new(input))
+            } else {
+                Box::new(
+                    ParDecompressBuilder::<Mgzip>::new()
+                        .num_threads(num_threads)
+                        .unwrap()
+                        .from_reader(input),
+                )
+            };
+            io::copy(&mut reader, &mut output)?;
         }
         #[cfg(feature = "any_zlib")]
         Format::Zlib => {
