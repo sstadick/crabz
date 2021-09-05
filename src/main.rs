@@ -2,7 +2,7 @@ use anyhow::{Error, Result};
 use env_logger::Env;
 use flate2::read::MultiGzDecoder;
 use flate2::write::DeflateDecoder;
-use gzp::deflate::{Gzip, Mgzip, RawDeflate, Bgzf};
+use gzp::deflate::{Bgzf, Gzip, Mgzip, RawDeflate};
 use gzp::par::compress::Compression;
 use gzp::par::decompress::ParDecompressBuilder;
 use gzp::{ZBuilder, ZWriter};
@@ -21,9 +21,9 @@ use flate2::write::ZlibDecoder;
 use gzp::deflate::Zlib;
 
 #[cfg(feature = "snappy")]
-use snap::read::FrameDecoder;
-#[cfg(feature = "snappy")]
 use gzp::snap::Snap;
+#[cfg(feature = "snappy")]
+use snap::read::FrameDecoder;
 
 const BUFFERSIZE: usize = 64 * 1024;
 
@@ -60,7 +60,6 @@ pub mod built_info {
         pub static ref VERSION: String = get_software_version();
     }
 }
-
 
 /// Get a bufferd input reader from stdin or a file
 fn get_input(path: Option<PathBuf>) -> Result<Box<dyn Read + Send + 'static>> {
@@ -180,7 +179,7 @@ impl Format {
             Format::RawDeflate => 9,
             // compression level is ignored
             #[cfg(feature = "snappy")]
-            Format::Snap => u32::MAX
+            Format::Snap => u32::MAX,
         }
     }
 }
@@ -284,7 +283,11 @@ where
     W: Write + Send + 'static,
 {
     // TODO: make passing - look for stdin / stdout and create similar to gzip behaviour otherwise
-    info!("Decompressing ({}) with {} threads available.", format.to_string(), num_threads);
+    info!(
+        "Decompressing ({}) with {} threads available.",
+        format.to_string(),
+        num_threads
+    );
 
     match format {
         Format::Gzip => {
@@ -295,10 +298,12 @@ where
             let mut reader: Box<dyn Read> = if num_threads == 0 {
                 Box::new(MultiGzDecoder::new(input))
             } else {
-                Box::new(ParDecompressBuilder::<Bgzf>::new()
-                    .num_threads(num_threads)
-                    .unwrap()
-                    .from_reader(input))
+                Box::new(
+                    ParDecompressBuilder::<Bgzf>::new()
+                        .num_threads(num_threads)
+                        .unwrap()
+                        .from_reader(input),
+                )
             };
             io::copy(&mut reader, &mut output)?;
         }
@@ -306,10 +311,12 @@ where
             let mut reader: Box<dyn Read> = if num_threads == 0 {
                 Box::new(MultiGzDecoder::new(input))
             } else {
-                Box::new(ParDecompressBuilder::<Mgzip>::new()
-                    .num_threads(num_threads)
-                    .unwrap()
-                    .from_reader(input))
+                Box::new(
+                    ParDecompressBuilder::<Mgzip>::new()
+                        .num_threads(num_threads)
+                        .unwrap()
+                        .from_reader(input),
+                )
             };
             io::copy(&mut reader, &mut output)?;
         }
