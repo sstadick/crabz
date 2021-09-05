@@ -4,16 +4,16 @@ set -eo pipefail
 test_data="$1"
 cp "${test_data}" ./data.txt
 
-# cargo clean
-# cargo build --release
-# ./target/release/crabz -f mgzip -p 32 -l 3 ./data.txt > ./bdata.3.txt.gz
-# ./target/release/crabz -f mgzip -p 32 -l 6 ./data.txt > ./bdata.6.txt.gz
-# ./target/release/crabz -f mgzip -p 32 -l 9 ./data.txt > ./bdata.9.txt.gz
-# ./target/release/crabz -f mgzip -p 32 -l 12 ./data.txt > ./bdata.12.txt.gz
+cargo clean
+cargo build --release
+./target/release/crabz -f mgzip -p 32 -l 3 ./data.txt > ./bdata.3.txt.gz
+./target/release/crabz -f mgzip -p 32 -l 6 ./data.txt > ./bdata.6.txt.gz
+./target/release/crabz -f mgzip -p 32 -l 9 ./data.txt > ./bdata.9.txt.gz
+./target/release/crabz -f mgzip -p 32 -l 12 ./data.txt > ./bdata.12.txt.gz
 
-# gzip -3 -c ./data.txt > ./data.3.txt.gz
-# gzip -6 -c ./data.txt > ./data.6.txt.gz
-# gzip -9 -c ./data.txt > ./data.9.txt.gz
+gzip -3 -c ./data.txt > ./data.3.txt.gz
+gzip -6 -c ./data.txt > ./data.6.txt.gz
+gzip -9 -c ./data.txt > ./data.9.txt.gz
 
 # hyperfine \
 #     --warmup 3 \
