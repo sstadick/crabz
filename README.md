@@ -45,10 +45,10 @@ sudo dpkg -i crabz-linux-amd64.deb
 cargo install crabz
 ```
 
-* Conda
+* Conda (coming soon!)
 
 ```
-conda install -c bioconda crabz
+conda install -c conda-forge crabz
 ```
 
 
