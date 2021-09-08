@@ -293,32 +293,37 @@ where
         Format::Gzip => {
             let mut reader = MultiGzDecoder::new(input);
             io::copy(&mut reader, &mut output)?;
+            output.flush()?;
         }
         Format::Bgzf => {
-            let mut reader: Box<dyn Read> = if num_threads == 0 {
-                Box::new(MultiGzDecoder::new(input))
+            if num_threads == 0 {
+                let mut reader = MultiGzDecoder::new(input);
+                io::copy(&mut reader, &mut output)?;
+                output.flush()?;
             } else {
-                Box::new(
-                    ParDecompressBuilder::<Bgzf>::new()
-                        .num_threads(num_threads)
-                        .unwrap()
-                        .from_reader(input),
-                )
+                let mut reader = ParDecompressBuilder::<Bgzf>::new()
+                    .num_threads(num_threads)
+                    .unwrap()
+                    .from_reader(input);
+                io::copy(&mut reader, &mut output)?;
+                output.flush()?;
+                reader.finish()?;
             };
-            io::copy(&mut reader, &mut output)?;
         }
         Format::Mgzip => {
-            let mut reader: Box<dyn Read> = if num_threads == 0 {
-                Box::new(MultiGzDecoder::new(input))
+            if num_threads == 0 {
+                let mut reader = MultiGzDecoder::new(input);
+                io::copy(&mut reader, &mut output)?;
+                output.flush()?;
             } else {
-                Box::new(
-                    ParDecompressBuilder::<Mgzip>::new()
-                        .num_threads(num_threads)
-                        .unwrap()
-                        .from_reader(input),
-                )
+                let mut reader = ParDecompressBuilder::<Mgzip>::new()
+                    .num_threads(num_threads)
+                    .unwrap()
+                    .from_reader(input);
+                io::copy(&mut reader, &mut output)?;
+                output.flush()?;
+                reader.finish()?;
             };
-            io::copy(&mut reader, &mut output)?;
         }
         #[cfg(feature = "any_zlib")]
         Format::Zlib => {
@@ -335,6 +340,7 @@ where
         Format::Snap => {
             let mut reader = FrameDecoder::new(input);
             io::copy(&mut reader, &mut output)?;
+            output.flush()?;
         }
     }
 
