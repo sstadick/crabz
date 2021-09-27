@@ -45,7 +45,7 @@ sudo dpkg -i crabz-linux-amd64.deb
 cargo install crabz
 ```
 
-* Conda (coming soon!)
+* Conda
 
 ```
 conda install -c conda-forge crabz
@@ -56,7 +56,6 @@ conda install -c conda-forge crabz
 
 ```
 ❯ crabz -h              
-Seth Stadick
 Compress and decompress files
 
 USAGE:
