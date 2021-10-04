@@ -1,4 +1,4 @@
-use anyhow::{Error, Result};
+use anyhow::{bail, Error, Result};
 use env_logger::Env;
 use flate2::read::MultiGzDecoder;
 use flate2::write::DeflateDecoder;
@@ -8,6 +8,7 @@ use gzp::par::decompress::ParDecompressBuilder;
 use gzp::{ZBuilder, ZWriter};
 use lazy_static::lazy_static;
 use log::info;
+use std::collections::HashSet;
 use std::fs::File;
 use std::io::{self, BufReader, BufWriter, Read, Write};
 use std::path::PathBuf;
@@ -26,6 +27,18 @@ use gzp::snap::Snap;
 use snap::read::FrameDecoder;
 
 const BUFFERSIZE: usize = 64 * 1024;
+
+macro_rules! string_set {
+    ( $( $x:expr ),* ) => {  // Match zero or more comma delimited items
+        {
+            let mut temp_set = HashSet::new();  // Create a mutable HashSet
+            $(
+                temp_set.insert(String::from($x)); // Insert each item matched into the HashSet
+            )*
+            temp_set // Return the populated HashSet
+        }
+    };
+}
 
 lazy_static! {
     /// Return the number of cpus as an &str
@@ -76,8 +89,16 @@ fn get_input(path: Option<PathBuf>) -> Result<Box<dyn Read + Send + 'static>> {
     Ok(reader)
 }
 
-/// Get a buffered output writer from stdout or a file
-fn get_output(path: Option<PathBuf>) -> Result<Box<dyn Write + Send + 'static>> {
+/// Get a buffered output writer from stdout or a file.
+///
+/// If input is_some and in_place is true and output is None, figure out the inplace name
+fn get_output(
+    path: Option<PathBuf>,
+    input_file: Option<PathBuf>,
+    in_place: bool,
+    is_decompress: bool,
+    format: Format,
+) -> Result<Box<dyn Write + Send + 'static>> {
     let writer: Box<dyn Write + Send + 'static> = match path {
         Some(path) => {
             if path.as_os_str() == "-" {
@@ -86,7 +107,44 @@ fn get_output(path: Option<PathBuf>) -> Result<Box<dyn Write + Send + 'static>> 
                 Box::new(BufWriter::with_capacity(BUFFERSIZE, File::create(path)?))
             }
         }
-        None => Box::new(BufWriter::with_capacity(BUFFERSIZE, io::stdout())),
+        None => {
+            // Create a file
+            if in_place && input_file.is_some() {
+                let input_file = input_file.unwrap();
+                let (ext, allowed) = format.get_extension();
+                if is_decompress {
+                    if let Some(found_ext) = input_file.extension().map(|x| x.to_string_lossy()) {
+                        if allowed.contains(&found_ext.to_string()) {
+                            let input_file_str = input_file.to_string_lossy();
+                            let stripped = input_file_str
+                                .strip_suffix(&format!(".{}", found_ext))
+                                .unwrap();
+                            Box::new(BufWriter::with_capacity(
+                                BUFFERSIZE,
+                                File::create(stripped)?,
+                            ))
+                        } else {
+                            bail!(
+                                "Extension on {:?} does not match expected of {:?}",
+                                input_file,
+                                ext
+                            )
+                        }
+                    } else {
+                        bail!(
+                            "No extension on {:?}, does not match expected of {:?}",
+                            input_file,
+                            ext
+                        )
+                    }
+                } else {
+                    let out = format!("{}.{}", input_file.to_string_lossy(), ext);
+                    Box::new(BufWriter::with_capacity(BUFFERSIZE, File::create(out)?))
+                }
+            } else {
+                Box::new(BufWriter::with_capacity(BUFFERSIZE, io::stdout()))
+            }
+        }
     };
     Ok(writer)
 }
@@ -163,7 +221,7 @@ impl Format {
         }
     }
 
-    fn get_highest_allowd_compression_leval(&self) -> u32 {
+    fn get_highest_allowed_compression_level(&self) -> u32 {
         match self {
             Format::Gzip => 9,
             #[cfg(feature = "libdeflate")]
@@ -182,6 +240,37 @@ impl Format {
             Format::Snap => u32::MAX,
         }
     }
+
+    fn get_lowest_allowed_compression_level(&self) -> u32 {
+        match self {
+            Format::Gzip => 0,
+            #[cfg(feature = "libdeflate")]
+            Format::Bgzf => 1,
+            #[cfg(not(feature = "libdeflate"))]
+            Format::Bgzf => 0,
+            #[cfg(feature = "libdeflate")]
+            Format::Mgzip => 1,
+            #[cfg(not(feature = "libdeflate"))]
+            Format::Mgzip => 0,
+            #[cfg(feature = "any_zlib")]
+            Format::Zlib => 0,
+            Format::RawDeflate => 0,
+            // compression level is ignored
+            #[cfg(feature = "snappy")]
+            Format::Snap => 0,
+        }
+    }
+
+    fn get_extension(&self) -> (&'static str, HashSet<String>) {
+        match self {
+            Format::Gzip => ("gz", string_set!["gz"]),
+            Format::Bgzf => ("gz", string_set!["gz", "bgz"]),
+            Format::Mgzip => ("gz", string_set!["gz", "mgz"]),
+            Format::Zlib => ("zz", string_set!["zz", "z", "gz"]),
+            Format::RawDeflate => ("gz", string_set!["gz"]),
+            Format::Snap => ("sz", string_set!["sz", "snappy"]),
+        }
+    }
 }
 
 /// Compress and decompress files.
@@ -191,6 +280,12 @@ struct Opts {
     /// Output path to write to, empty or "-" to write to stdout
     #[structopt(short, long)]
     output: Option<PathBuf>,
+
+    /// Perform the compression / decompression in place.
+    ///
+    /// **NOTE** this will remove the input file at completion.
+    #[structopt(short = "I", long)]
+    in_place: bool,
 
     /// Input file to read from, empty or "-" to read from stdin
     #[structopt(name = "FILE", parse(from_os_str))]
@@ -216,14 +311,22 @@ struct Opts {
 
 fn main() -> Result<()> {
     let opts = setup();
-    if opts.compression_level > opts.format.get_highest_allowd_compression_leval() {
+    if opts.compression_level > opts.format.get_highest_allowed_compression_level()
+        || opts.compression_level < opts.format.get_lowest_allowed_compression_level()
+    {
         return Err(Error::msg("Invalid compression level"));
     }
 
     if opts.decompress {
         if let Err(err) = run_decompress(
-            get_input(opts.file)?,
-            get_output(opts.output)?,
+            get_input(opts.file.clone())?,
+            get_output(
+                opts.output,
+                opts.file.clone(),
+                opts.in_place,
+                opts.decompress,
+                opts.format,
+            )?,
             opts.format,
             opts.compression_threads,
         ) {
@@ -233,8 +336,14 @@ fn main() -> Result<()> {
             return Err(err);
         }
     } else if let Err(err) = run_compress(
-        get_input(opts.file)?,
-        get_output(opts.output)?,
+        get_input(opts.file.clone())?,
+        get_output(
+            opts.output,
+            opts.file.clone(),
+            opts.in_place,
+            opts.decompress,
+            opts.format,
+        )?,
         opts.format,
         opts.compression_level,
         opts.compression_threads,
@@ -244,6 +353,14 @@ fn main() -> Result<()> {
         }
         return Err(err);
     }
+
+    // Remove input file
+    if opts.in_place {
+        if let Some(file) = opts.file {
+            std::fs::remove_file(file)?;
+        }
+    }
+
     Ok(())
 }
 
