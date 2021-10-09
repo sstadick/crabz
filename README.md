@@ -62,12 +62,24 @@ USAGE:
     crabz [FLAGS] [OPTIONS] [FILE]
 
 FLAGS:
-    -d, --decompress    Flag to switch to decompressing inputs. Note: this flag may change in future releases
-    -h, --help          Prints help information
-    -V, --version       Prints version information
+    -d, --decompress    
+            Flag to switch to decompressing inputs. Note: this flag may change in future releases
+
+    -h, --help          
+            Prints help information
+
+    -I, --in-place      
+            Perform the compression / decompression in place.
+            
+            **NOTE** this will remove the input file at completion.
+    -V, --version       
+            Prints version information
+
 
 OPTIONS:
-    -l, --compression-level <compression-level>        Compression level [default: 6]
+    -l, --compression-level <compression-level>        
+            Compression level [default: 6]
+
     -p, --compression-threads <compression-threads>
             Number of compression threads to use, or if decompressing a format that allow for multi-threaded
             decompression, the number to use. Note that > 4 threads for decompression doesn't seem to help [default:
@@ -75,10 +87,23 @@ OPTIONS:
     -f, --format <format>
             The format to use [default: gzip]  [possible values: gzip, bgzf, mgzip,
             zlib, deflate, snap]
-    -o, --output <output>                              Output path to write to, empty or "-" to write to stdout
+    -o, --output <output>                              
+            Output path to write to, empty or "-" to write to stdout
+
+    -P, --pin-at <pin-at>                              
+            Specify the physical core to pin threads at.
+            
+            This can provide a significant performance improvement, but has the downside of possibly conflicting with
+            other pinned cores. If you are running multiple instances of `crabz` at once you can manually space out the
+            pinned cores.
+            
+            # Example
+            - Instance 1 has `-p 4 -P 0` set indicating that it will use 4 cores pinned at 0, 1, 2, 3
+            - Instance 2 has `-p 4 -P 4` set indicating that it will use 4 cores pinned at 4, 5, 6, 7
 
 ARGS:
-    <FILE>    Input file to read from, empty or "-" to read from stdin
+    <FILE>    
+            Input file to read from, empty or "-" to read from stdin
 ```
 
 ## Benchmarks
