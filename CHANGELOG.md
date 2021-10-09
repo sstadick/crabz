@@ -1,3 +1,7 @@
+# v0.7.2
+
+- Includes updated THRIDPARYT.yml 
+
 # v0.7.1
 
 - Fix [issue 11](https://github.com/sstadick/crabz/issues/11)
