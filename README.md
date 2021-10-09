@@ -106,8 +106,7 @@ an edge due to the following:
 With regards to block formats like Mgzip and BGZF, `crabz` is using `libdeflater` by default which excels at compressing and
 decompression known-sized blocks. This makes block compression formats very fast at a small loss to the compression ratio.
 
-Comparing `crabz` against tools like `bgzip`, which also defaults to `libdeflater` as a backend shows them within a few percent of
-eachother.
+See end of benchmarks section for comparison against `bgzip`.
 
 As `crabz` is just a wrapper for the `gzp` library, the most exciting thing about these benchmarks is that `gzp` is on par with
 best in class CLI tools for multi-threaded compression and decompression as a library.
@@ -409,6 +408,5 @@ These benchmarks were run on the `all_train.csv` data found [here](https://archi
 
 ## TODOs
 
-- Test with jemalloc
 - Add some form of auto format detection, even just by file extension
 
