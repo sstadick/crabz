@@ -148,6 +148,7 @@ dependencies = [
  "gzp",
  "lazy_static",
  "log",
+ "mimalloc",
  "num_cpus",
  "snap",
  "structopt",
@@ -251,7 +252,9 @@ dependencies = [
 
 [[package]]
 name = "gzp"
-version = "0.8.3-alpha.0"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b0a2c88de71920b23b955fbf2aaf5266ca0c75dec62c782276971d092638fb6d"
 dependencies = [
  "byteorder",
  "bytes",
@@ -371,6 +374,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "libmimalloc-sys"
+version = "0.1.22"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1d1b8479c593dba88c2741fc50b92e13dbabbbe0bd504d979f244ccc1a5b1c01"
+dependencies = [
+ "cc",
+]
+
+[[package]]
 name = "libz-sys"
 version = "1.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -406,6 +418,15 @@ name = "matches"
 version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a3e378b66a060d48947b590737b30a1be76706c8dd7b8ba0f2fe3989c68a853f"
+
+[[package]]
+name = "mimalloc"
+version = "0.1.26"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fb74897ce508e6c49156fd1476fc5922cbc6e75183c65e399c765a09122e5130"
+dependencies = [
+ "libmimalloc-sys",
+]
 
 [[package]]
 name = "miniz_oxide"

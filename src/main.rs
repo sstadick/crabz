@@ -1,3 +1,6 @@
+#[global_allocator]
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
 use anyhow::{bail, Error, Result};
 use env_logger::Env;
 use flate2::read::MultiGzDecoder;
@@ -5,6 +8,7 @@ use flate2::write::DeflateDecoder;
 use gzp::deflate::{Bgzf, Gzip, Mgzip, RawDeflate};
 use gzp::par::compress::Compression;
 use gzp::par::decompress::ParDecompressBuilder;
+use gzp::{BgzfSyncReader, MgzipSyncReader};
 use gzp::{ZBuilder, ZWriter};
 use lazy_static::lazy_static;
 use log::info;
@@ -187,6 +191,7 @@ impl Format {
         writer: W,
         num_threads: usize,
         compression_level: u32,
+        pin_at: Option<usize>,
     ) -> Box<dyn ZWriter>
     where
         W: Write + Send + 'static,
@@ -195,28 +200,34 @@ impl Format {
             Format::Gzip => ZBuilder::<Gzip, _>::new()
                 .num_threads(num_threads)
                 .compression_level(Compression::new(compression_level))
+                .pin_threads(pin_at)
                 .from_writer(writer),
             Format::Bgzf => ZBuilder::<Bgzf, _>::new()
                 .num_threads(num_threads)
                 .compression_level(Compression::new(compression_level))
+                .pin_threads(pin_at)
                 .from_writer(writer),
             Format::Mgzip => ZBuilder::<Mgzip, _>::new()
                 .num_threads(num_threads)
                 .compression_level(Compression::new(compression_level))
+                .pin_threads(pin_at)
                 .from_writer(writer),
             #[cfg(feature = "any_zlib")]
             Format::Zlib => ZBuilder::<Zlib, _>::new()
                 .num_threads(num_threads)
                 .compression_level(Compression::new(compression_level))
+                .pin_threads(pin_at)
                 .from_writer(writer),
             Format::RawDeflate => ZBuilder::<RawDeflate, _>::new()
                 .num_threads(num_threads)
                 .compression_level(Compression::new(compression_level))
+                .pin_threads(pin_at)
                 .from_writer(writer),
             #[cfg(feature = "snappy")]
             Format::Snap => ZBuilder::<Snap, _>::new()
                 .num_threads(num_threads)
                 .compression_level(Compression::new(compression_level))
+                .pin_threads(pin_at)
                 .from_writer(writer),
         }
     }
@@ -307,6 +318,18 @@ struct Opts {
     /// Flag to switch to decompressing inputs. Note: this flag may change in future releases
     #[structopt(short, long)]
     decompress: bool,
+
+    /// Specify the physical core to pin threads at.
+    ///
+    /// This can provide a significant performance improvement, but has the downside of possibly conflicting
+    /// with other pinned cores. If you are running multiple instances of `crabz` at once you can manually
+    /// space out the pinned cores.
+    ///
+    /// # Example
+    /// - Instance 1 has `-p 4 -P 0` set indicating that it will use 4 cores pinned at 0, 1, 2, 3
+    /// - Instance 2 has `-p 4 -P 4` set indicating that it will use 4 cores pinned at 4, 5, 6, 7
+    #[structopt(short = "P", long)]
+    pin_at: Option<usize>,
 }
 
 fn main() -> Result<()> {
@@ -329,6 +352,7 @@ fn main() -> Result<()> {
             )?,
             opts.format,
             opts.compression_threads,
+            opts.pin_at,
         ) {
             if is_broken_pipe(&err) {
                 exit(0)
@@ -347,6 +371,7 @@ fn main() -> Result<()> {
         opts.format,
         opts.compression_level,
         opts.compression_threads,
+        opts.pin_at,
     ) {
         if is_broken_pipe(&err) {
             exit(0)
@@ -371,6 +396,7 @@ fn run_compress<R, W>(
     format: Format,
     compression_level: u32,
     num_threads: usize,
+    pin_at: Option<usize>,
 ) -> Result<()>
 where
     R: Read,
@@ -382,7 +408,7 @@ where
         num_threads,
         compression_level
     );
-    let mut writer = format.create_compressor(output, num_threads, compression_level);
+    let mut writer = format.create_compressor(output, num_threads, compression_level, pin_at);
     io::copy(&mut input, &mut writer)?;
     writer.finish()?;
     Ok(())
@@ -394,12 +420,12 @@ fn run_decompress<R, W>(
     mut output: W,
     format: Format,
     num_threads: usize,
+    pin_at: Option<usize>,
 ) -> Result<()>
 where
     R: Read + Send + 'static,
     W: Write + Send + 'static,
 {
-    // TODO: make passing - look for stdin / stdout and create similar to gzip behaviour otherwise
     info!(
         "Decompressing ({}) with {} threads available.",
         format.to_string(),
@@ -414,13 +440,14 @@ where
         }
         Format::Bgzf => {
             if num_threads == 0 {
-                let mut reader = MultiGzDecoder::new(input);
+                let mut reader = BgzfSyncReader::new(input);
                 io::copy(&mut reader, &mut output)?;
                 output.flush()?;
             } else {
                 let mut reader = ParDecompressBuilder::<Bgzf>::new()
                     .num_threads(num_threads)
                     .unwrap()
+                    .pin_threads(pin_at)
                     .from_reader(input);
                 io::copy(&mut reader, &mut output)?;
                 output.flush()?;
@@ -429,13 +456,14 @@ where
         }
         Format::Mgzip => {
             if num_threads == 0 {
-                let mut reader = MultiGzDecoder::new(input);
+                let mut reader = MgzipSyncReader::new(input);
                 io::copy(&mut reader, &mut output)?;
                 output.flush()?;
             } else {
                 let mut reader = ParDecompressBuilder::<Mgzip>::new()
                     .num_threads(num_threads)
                     .unwrap()
+                    .pin_threads(pin_at)
                     .from_reader(input);
                 io::copy(&mut reader, &mut output)?;
                 output.flush()?;
