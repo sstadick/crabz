@@ -69,7 +69,7 @@ jobs:
           asset_name: ${{ env.DEB }}
           tag: ${{ github.ref }}
 
-      - name: Upload src and pgo data to release
+      - name: Upload src to release
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
