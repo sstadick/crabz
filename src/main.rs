@@ -96,6 +96,7 @@ fn get_input(path: Option<PathBuf>) -> Result<Box<dyn Read + Send + 'static>> {
 /// Get a buffered output writer from stdout or a file.
 ///
 /// If input is_some and in_place is true and output is None, figure out the inplace name
+#[allow(clippy::unnecessary_unwrap)]
 fn get_output(
     path: Option<PathBuf>,
     input_file: Option<PathBuf>,
