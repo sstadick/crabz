@@ -1,4 +1,4 @@
-# v0.7.0
+# v0.7.1
 
 - Fix [issue 11](https://github.com/sstadick/crabz/issues/11)
 - Adds "in-place" mode to decompress / compress by stripping/adding a suffix like other compression tools
