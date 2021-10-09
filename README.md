@@ -106,11 +106,11 @@ an edge due to the following:
 With regards to block formats like Mgzip and BGZF, `crabz` is using `libdeflater` by default which excels at compressing and
 decompression known-sized blocks. This makes block compression formats very fast at a small loss to the compression ratio.
 
-Comparing `crabz` against tools like `bgzip`, which also defaults to `libdeflater` as a backend shows them within a few percent of
-eachother.
+See end of benchmarks section for comparison against `bgzip`.
 
 As `crabz` is just a wrapper for the `gzp` library, the most exciting thing about these benchmarks is that `gzp` is on par with
 best in class CLI tools for multi-threaded compression and decompression as a library.
+
 
 ### Flate2 zlib-ng backend
 
@@ -326,9 +326,87 @@ best in class CLI tools for multi-threaded compression and decompression as a li
 | `pigz -d -c ./bdata.12.txt.gz > data.txt`              | 2.505 ± 0.105 |   2.442 |   2.626 | 4.75 ± 0.22 |
 
 
+#### `crabz`, `pigz`, and `bgzip`
+
+These benchmarks were run on the `all_train.csv` data found [here](https://archive.ics.uci.edu/ml/machine-learning-databases/00347/all_train.csv.gz)
+
+#### Compression
+
+| Command                                                        |        Mean [s] | Min [s] | Max [s] |     Relative |
+| :------------------------------------------------------------- | --------------: | ------: | ------: | -----------: |
+| `crabz -p 2 -P 0 -l 2 -f bgzf ./data.txt > ./data.out.txt.gz`  |  15.837 ± 0.137 |  15.688 |  15.959 |  5.52 ± 0.13 |
+| `bgzip -c -@ 2 -l 2 ./data.txt > ./data.out.txt.gz`            |  19.471 ± 0.178 |  19.268 |  19.602 |  6.78 ± 0.16 |
+| `crabz -p 2 -P 0 -l 2 -f gzip ./data.txt > ./data.out.txt.gz`  |  19.723 ± 0.632 |  19.285 |  20.448 |  6.87 ± 0.26 |
+| `pigz -c -p 2 -2 ./data.txt > ./data.out.txt.gz`               |  32.249 ± 0.024 |  32.226 |  32.274 | 11.24 ± 0.24 |
+| `crabz -p 4 -P 0 -l 2 -f bgzf ./data.txt > ./data.out.txt.gz`  |   8.601 ± 0.538 |   8.040 |   9.113 |  3.00 ± 0.20 |
+| `bgzip -c -@ 4 -l 2 ./data.txt > ./data.out.txt.gz`            |  10.953 ± 0.033 |  10.929 |  10.990 |  3.82 ± 0.08 |
+| `crabz -p 4 -P 0 -l 2 -f gzip ./data.txt > ./data.out.txt.gz`  |  10.887 ± 0.584 |  10.236 |  11.364 |  3.79 ± 0.22 |
+| `pigz -c -p 4 -2 ./data.txt > ./data.out.txt.gz`               |  16.493 ± 0.323 |  16.257 |  16.861 |  5.75 ± 0.17 |
+| `crabz -p 8 -P 0 -l 2 -f bgzf ./data.txt > ./data.out.txt.gz`  |   5.206 ± 0.372 |   4.780 |   5.464 |  1.81 ± 0.14 |
+| `bgzip -c -@ 8 -l 2 ./data.txt > ./data.out.txt.gz`            |   6.920 ± 0.033 |   6.893 |   6.957 |  2.41 ± 0.05 |
+| `crabz -p 8 -P 0 -l 2 -f gzip ./data.txt > ./data.out.txt.gz`  |   5.893 ± 0.135 |   5.777 |   6.041 |  2.05 ± 0.06 |
+| `pigz -c -p 8 -2 ./data.txt > ./data.out.txt.gz`               |   8.974 ± 0.467 |   8.553 |   9.477 |  3.13 ± 0.18 |
+| `crabz -p 16 -P 0 -l 2 -f bgzf ./data.txt > ./data.out.txt.gz` |   2.870 ± 0.061 |   2.816 |   2.936 |         1.00 |
+| `bgzip -c -@ 16 -l 2 ./data.txt > ./data.out.txt.gz`           |   5.124 ± 0.107 |   5.040 |   5.244 |  1.79 ± 0.05 |
+| `crabz -p 16 -P 0 -l 2 -f gzip ./data.txt > ./data.out.txt.gz` |   4.250 ± 0.323 |   3.933 |   4.579 |  1.48 ± 0.12 |
+| `pigz -c -p 16 -2 ./data.txt > ./data.out.txt.gz`              |   4.767 ± 0.223 |   4.513 |   4.933 |  1.66 ± 0.09 |
+| `crabz -p 32 -P 0 -l 2 -f bgzf ./data.txt > ./data.out.txt.gz` |   3.669 ± 0.303 |   3.320 |   3.865 |  1.28 ± 0.11 |
+| `bgzip -c -@ 32 -l 2 ./data.txt > ./data.out.txt.gz`           |   4.676 ± 0.038 |   4.632 |   4.701 |  1.63 ± 0.04 |
+| `crabz -p 32 -P 0 -l 2 -f gzip ./data.txt > ./data.out.txt.gz` |   4.324 ± 0.246 |   4.143 |   4.605 |  1.51 ± 0.09 |
+| `pigz -c -p 32 -2 ./data.txt > ./data.out.txt.gz`              |   5.854 ± 0.070 |   5.795 |   5.931 |  2.04 ± 0.05 |
+| `crabz -p 2 -P 0 -l 6 -f bgzf ./data.txt > ./data.out.txt.gz`  |  27.696 ± 0.147 |  27.593 |  27.864 |  9.65 ± 0.21 |
+| `bgzip -c -@ 2 -l 6 ./data.txt > ./data.out.txt.gz`            |  30.961 ± 0.446 |  30.446 |  31.231 | 10.79 ± 0.28 |
+| `crabz -p 2 -P 0 -l 6 -f gzip ./data.txt > ./data.out.txt.gz`  |  36.229 ± 0.175 |  36.092 |  36.427 | 12.62 ± 0.27 |
+| `pigz -c -p 2 -6 ./data.txt > ./data.out.txt.gz`               |  97.175 ± 0.571 |  96.743 |  97.823 | 33.86 ± 0.74 |
+| `crabz -p 4 -P 0 -l 6 -f bgzf ./data.txt > ./data.out.txt.gz`  |  14.802 ± 0.436 |  14.316 |  15.159 |  5.16 ± 0.19 |
+| `bgzip -c -@ 4 -l 6 ./data.txt > ./data.out.txt.gz`            |  16.927 ± 0.130 |  16.789 |  17.048 |  5.90 ± 0.13 |
+| `crabz -p 4 -P 0 -l 6 -f gzip ./data.txt > ./data.out.txt.gz`  |  19.192 ± 0.675 |  18.629 |  19.940 |  6.69 ± 0.27 |
+| `pigz -c -p 4 -6 ./data.txt > ./data.out.txt.gz`               |  49.305 ± 0.114 |  49.203 |  49.429 | 17.18 ± 0.37 |
+| `crabz -p 8 -P 0 -l 6 -f bgzf ./data.txt > ./data.out.txt.gz`  |   7.833 ± 0.065 |   7.784 |   7.907 |  2.73 ± 0.06 |
+| `bgzip -c -@ 8 -l 6 ./data.txt > ./data.out.txt.gz`            |   9.858 ± 0.105 |   9.739 |   9.939 |  3.43 ± 0.08 |
+| `crabz -p 8 -P 0 -l 6 -f gzip ./data.txt > ./data.out.txt.gz`  |  10.417 ± 0.979 |   9.626 |  11.511 |  3.63 ± 0.35 |
+| `pigz -c -p 8 -6 ./data.txt > ./data.out.txt.gz`               |  25.276 ± 0.170 |  25.083 |  25.404 |  8.81 ± 0.20 |
+| `crabz -p 16 -P 0 -l 6 -f bgzf ./data.txt > ./data.out.txt.gz` |   4.704 ± 0.321 |   4.337 |   4.937 |  1.64 ± 0.12 |
+| `bgzip -c -@ 16 -l 6 ./data.txt > ./data.out.txt.gz`           |   6.565 ± 0.155 |   6.429 |   6.734 |  2.29 ± 0.07 |
+| `crabz -p 16 -P 0 -l 6 -f gzip ./data.txt > ./data.out.txt.gz` |   5.722 ± 0.320 |   5.530 |   6.092 |  1.99 ± 0.12 |
+| `pigz -c -p 16 -6 ./data.txt > ./data.out.txt.gz`              |  13.673 ± 0.129 |  13.525 |  13.762 |  4.76 ± 0.11 |
+| `crabz -p 32 -P 0 -l 6 -f bgzf ./data.txt > ./data.out.txt.gz` |   4.202 ± 0.213 |   3.957 |   4.328 |  1.46 ± 0.08 |
+| `bgzip -c -@ 32 -l 6 ./data.txt > ./data.out.txt.gz`           |   5.538 ± 0.135 |   5.395 |   5.663 |  1.93 ± 0.06 |
+| `crabz -p 32 -P 0 -l 6 -f gzip ./data.txt > ./data.out.txt.gz` |   5.488 ± 0.064 |   5.423 |   5.550 |  1.91 ± 0.05 |
+| `pigz -c -p 32 -6 ./data.txt > ./data.out.txt.gz`              |   9.079 ± 0.286 |   8.808 |   9.379 |  3.16 ± 0.12 |
+| `crabz -p 2 -P 0 -l 9 -f bgzf ./data.txt > ./data.out.txt.gz`  | 162.875 ± 0.100 | 162.778 | 162.977 | 56.75 ± 1.20 |
+| `bgzip -c -@ 2 -l 9 ./data.txt > ./data.out.txt.gz`            | 172.428 ± 0.242 | 172.207 | 172.687 | 60.08 ± 1.27 |
+| `crabz -p 2 -P 0 -l 9 -f gzip ./data.txt > ./data.out.txt.gz`  | 139.245 ± 0.270 | 138.974 | 139.514 | 48.52 ± 1.03 |
+| `pigz -c -p 2 -9 ./data.txt > ./data.out.txt.gz`               | 209.645 ± 0.058 | 209.580 | 209.691 | 73.05 ± 1.55 |
+| `crabz -p 4 -P 0 -l 9 -f bgzf ./data.txt > ./data.out.txt.gz`  |  84.624 ± 0.185 |  84.414 |  84.762 | 29.49 ± 0.63 |
+| `bgzip -c -@ 4 -l 9 ./data.txt > ./data.out.txt.gz`            |  87.228 ± 0.232 |  87.053 |  87.492 | 30.39 ± 0.65 |
+| `crabz -p 4 -P 0 -l 9 -f gzip ./data.txt > ./data.out.txt.gz`  |  72.339 ± 0.166 |  72.187 |  72.517 | 25.21 ± 0.54 |
+| `pigz -c -p 4 -9 ./data.txt > ./data.out.txt.gz`               | 106.579 ± 0.236 | 106.307 | 106.731 | 37.14 ± 0.79 |
+| `crabz -p 8 -P 0 -l 9 -f bgzf ./data.txt > ./data.out.txt.gz`  |  42.988 ± 0.130 |  42.905 |  43.138 | 14.98 ± 0.32 |
+| `bgzip -c -@ 8 -l 9 ./data.txt > ./data.out.txt.gz`            |  44.550 ± 0.097 |  44.449 |  44.642 | 15.52 ± 0.33 |
+| `crabz -p 8 -P 0 -l 9 -f gzip ./data.txt > ./data.out.txt.gz`  |  36.555 ± 0.030 |  36.521 |  36.579 | 12.74 ± 0.27 |
+| `pigz -c -p 8 -9 ./data.txt > ./data.out.txt.gz`               |  54.047 ± 0.016 |  54.030 |  54.062 | 18.83 ± 0.40 |
+| `crabz -p 16 -P 0 -l 9 -f bgzf ./data.txt > ./data.out.txt.gz` |  22.391 ± 0.234 |  22.154 |  22.623 |  7.80 ± 0.18 |
+| `bgzip -c -@ 16 -l 9 ./data.txt > ./data.out.txt.gz`           |  24.041 ± 0.237 |  23.813 |  24.286 |  8.38 ± 0.20 |
+| `crabz -p 16 -P 0 -l 9 -f gzip ./data.txt > ./data.out.txt.gz` |  19.285 ± 0.125 |  19.141 |  19.363 |  6.72 ± 0.15 |
+| `pigz -c -p 16 -9 ./data.txt > ./data.out.txt.gz`              |  27.645 ± 0.078 |  27.579 |  27.731 |  9.63 ± 0.21 |
+| `crabz -p 32 -P 0 -l 9 -f bgzf ./data.txt > ./data.out.txt.gz` |  15.148 ± 0.138 |  14.992 |  15.252 |  5.28 ± 0.12 |
+| `bgzip -c -@ 32 -l 9 ./data.txt > ./data.out.txt.gz`           |  16.091 ± 0.193 |  15.874 |  16.243 |  5.61 ± 0.14 |
+| `crabz -p 32 -P 0 -l 9 -f gzip ./data.txt > ./data.out.txt.gz` |  11.832 ± 0.168 |  11.637 |  11.930 |  4.12 ± 0.11 |
+| `pigz -c -p 32 -9 ./data.txt > ./data.out.txt.gz`              |  16.912 ± 0.095 |  16.804 |  16.982 |  5.89 ± 0.13 |
+
+#### Decompression
+
+| Command                                                 |      Mean [s] | Min [s] | Max [s] |    Relative |
+| :------------------------------------------------------ | ------------: | ------: | ------: | ----------: |
+| `crabz -d -p 4 -f bgzf ./data.txt.gz > ./data.out.txt`  | 5.941 ± 0.172 |   5.745 |   6.070 | 1.11 ± 0.09 |
+| `bgzip -d -c -@ 4  ./data.txt.gz > ./data.out.txt`      | 5.357 ± 0.407 |   4.925 |   5.734 |        1.00 |
+| `crabz -d -p 8 -f bgzf ./data.txt.gz > ./data.out.txt`  | 5.569 ± 0.496 |   5.023 |   5.990 | 1.04 ± 0.12 |
+| `bgzip -d -c -@ 8  ./data.txt.gz > ./data.out.txt`      | 5.867 ± 0.252 |   5.682 |   6.154 | 1.10 ± 0.10 |
+| `crabz -d -p 16 -f bgzf ./data.txt.gz > ./data.out.txt` | 5.663 ± 0.240 |   5.506 |   5.939 | 1.06 ± 0.09 |
+| `bgzip -d -c -@ 16  ./data.txt.gz > ./data.out.txt`     | 5.534 ± 0.124 |   5.416 |   5.663 | 1.03 ± 0.08 |
 
 ## TODOs
 
-- Test with jemalloc
 - Add some form of auto format detection, even just by file extension
 
