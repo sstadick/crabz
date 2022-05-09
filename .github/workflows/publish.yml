@@ -20,7 +20,7 @@ jobs:
             asset_name: crabz-macos-amd64
           - os: windows-latest
             artifact_name: crabz.exe
-            asset_name: crabz-windows-amd64
+            asset_name: crabz-windows-amd64.exe
 
     steps:
       - uses: actions/checkout@v2
