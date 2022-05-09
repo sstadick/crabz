@@ -278,6 +278,7 @@ impl Format {
             Format::Gzip => ("gz", string_set!["gz"]),
             Format::Bgzf => ("gz", string_set!["gz", "bgz"]),
             Format::Mgzip => ("gz", string_set!["gz", "mgz"]),
+            #[cfg(feature = "any_zlib")]
             Format::Zlib => ("zz", string_set!["zz", "z", "gz"]),
             Format::RawDeflate => ("gz", string_set!["gz"]),
             Format::Snap => ("sz", string_set!["sz", "snappy"]),
