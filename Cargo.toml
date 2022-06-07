@@ -33,7 +33,7 @@ any_zlib = [] # internal feature flag
 anyhow = "1.0.43"
 env_logger = {version = "0.9.0", default-features = false, features = ["termcolor", "atty", "humantime"]}
 flate2 = { version = "~1", default-features = false}
-gzp = { version = "0.9.0", default-features = false}
+gzp = { version = "0.10.0", default-features = false}
 lazy_static = "1.4.0"
 log = "0.4.14"
 num_cpus = "1.13.0"
