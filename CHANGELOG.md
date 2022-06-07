@@ -1,3 +1,7 @@
+# v0.7.5
+
+- Update deps, update thirdparty file, use fixed version of gzp
+
 # v0.7.4
 
 - Update deps, specifically gzp to take advantage of updated flate2
