@@ -139,7 +139,7 @@ dependencies = [
 
 [[package]]
 name = "crabz"
-version = "0.7.5-alpha.0"
+version = "0.7.5"
 dependencies = [
  "anyhow",
  "built",
