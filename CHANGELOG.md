@@ -1,3 +1,7 @@
+# v0.7.4
+
+- Update deps, specifically gzp to take advantage of updated flate2
+
 # v0.7.3
 
 - [bugfix](https://github.com/sstadick/crabz/issues/14) Fixes feature flags to allow for compiling rust-only backend
