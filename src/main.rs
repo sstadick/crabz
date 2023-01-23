@@ -18,7 +18,7 @@ use std::io::{self, BufReader, BufWriter, Read, Write};
 use std::path::PathBuf;
 use std::process::exit;
 use structopt::{clap::AppSettings::ColoredHelp, StructOpt};
-use strum::{EnumString, EnumVariantNames, ToString, VariantNames};
+use strum::{EnumString, EnumVariantNames, VariantNames};
 
 #[cfg(feature = "any_zlib")]
 use flate2::write::ZlibDecoder;
@@ -165,7 +165,7 @@ fn is_broken_pipe(err: &Error) -> bool {
     false
 }
 
-#[derive(EnumString, EnumVariantNames, ToString, Debug, Copy, Clone)]
+#[derive(EnumString, EnumVariantNames, strum::Display, Debug, Copy, Clone)]
 #[strum(serialize_all = "kebab_case")]
 enum Format {
     #[strum(serialize = "gzip", serialize = "gz")]
