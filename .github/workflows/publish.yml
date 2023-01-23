@@ -54,7 +54,7 @@ jobs:
           if [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
             cargo install cargo-deb
             cargo deb
-            deb_path=./target/debian/crabz*.deb
+            deb_path=./crabz/target/debian/crabz*.deb
             asset_path="${{ matrix.asset_name }}.deb"
             mv "${deb_path}" "${asset_path}"
             echo "DEB=${asset_path}" >> $GITHUB_ENV
