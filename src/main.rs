@@ -53,9 +53,9 @@ lazy_static! {
 pub const VERSION: &str = git_version!(
     cargo_prefix = "cargo:",
     prefix = "git:",
-    // Note that on the CLI, the crabz* needs to be in single quotes
+    // Note that on the CLI, the v* needs to be in single quotes
     // When passed here though there seems to be some magic quoting that happens.
-    args = ["--always", "--dirty=-modified", "--match=crabz*"]
+    args = ["--always", "--dirty=-modified", "--match=v*"]
 );
 
 /// Get a bufferd input reader from stdin or a file
