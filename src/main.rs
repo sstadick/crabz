@@ -5,6 +5,7 @@ use anyhow::{bail, Error, Result};
 use env_logger::Env;
 use flate2::read::MultiGzDecoder;
 use flate2::write::DeflateDecoder;
+use git_version::git_version;
 use gzp::deflate::{Bgzf, Gzip, Mgzip, RawDeflate};
 use gzp::par::compress::Compression;
 use gzp::par::decompress::ParDecompressBuilder;
@@ -49,34 +50,13 @@ lazy_static! {
     pub static ref NUM_CPU: String = num_cpus::get().to_string();
 }
 
-pub mod built_info {
-    use structopt::lazy_static::lazy_static;
-
-    include!(concat!(env!("OUT_DIR"), "/built.rs"));
-
-    /// Get a software version string including
-    ///   - Git commit hash
-    ///   - Git dirty info (whether the repo had uncommitted changes)
-    ///   - Cargo package version if no git info found
-    fn get_software_version() -> String {
-        let prefix = if let Some(s) = GIT_COMMIT_HASH {
-            format!("{}-{}", PKG_VERSION, s[0..8].to_owned())
-        } else {
-            // This shouldn't happen
-            PKG_VERSION.to_string()
-        };
-        let suffix = match GIT_DIRTY {
-            Some(true) => "-dirty",
-            _ => "",
-        };
-        format!("{}{}", prefix, suffix)
-    }
-
-    lazy_static! {
-        /// Version of the software with git hash
-        pub static ref VERSION: String = get_software_version();
-    }
-}
+pub const VERSION: &str = git_version!(
+    cargo_prefix = "cargo:",
+    prefix = "git:",
+    // Note that on the CLI, the v* needs to be in single quotes
+    // When passed here though there seems to be some magic quoting that happens.
+    args = ["--always", "--dirty=-modified", "--match=v*"]
+);
 
 /// Get a bufferd input reader from stdin or a file
 fn get_input(path: Option<PathBuf>) -> Result<Box<dyn Read + Send + 'static>> {
@@ -288,7 +268,7 @@ impl Format {
 
 /// Compress and decompress files.
 #[derive(StructOpt, Debug)]
-#[structopt(name = "crabz", author, global_setting(ColoredHelp), version = built_info::VERSION.as_str())]
+#[structopt(name = "crabz", author, global_setting(ColoredHelp), version = VERSION)]
 struct Opts {
     /// Output path to write to, empty or "-" to write to stdout
     #[structopt(short, long)]
