@@ -1,7 +1,7 @@
 [package]
 name = "crabz"
 authors = ["Seth Stadick"]
-version = "0.7.10"
+version = "0.8.0"
 edition = "2018"
 license = "Unlicense/MIT"
 readme = "README.md"
