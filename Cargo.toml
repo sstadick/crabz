@@ -11,6 +11,7 @@ repository = "https://github.com/sstadick/crabz"
 categories = ["compression", "concurrency"]
 keywords = ["compression", "parallel", "pigz"]
 description = "Parallel Compression"
+exclude = ["bench-data/"]
 
 [[bin]]
 name = "crabz"
