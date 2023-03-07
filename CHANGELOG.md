@@ -1,3 +1,8 @@
+# v0.7.7 (WIP)
+
+- [bugfix](https://github.com/sstadick/crabz/pull/24) Remove benchmark data from distribution from @Shnatsel
+- (WIP) [bugfix](https://github.com/sstadick/crabz/issues/25)
+
 # v0.7.6
 
 - Update deps, add dependabot
