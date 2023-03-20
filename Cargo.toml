@@ -31,7 +31,7 @@ any_zlib = [] # internal feature flag
 
 
 [dependencies]
-anyhow = "1.0.68"
+anyhow = "1.0.70"
 env_logger = { version = "0.10.0", default-features = false, features = ["default"] }
 flate2 = { version = "1.0.25", default-features = false }
 gzp = { version = "0.11.3", default-features = false }
