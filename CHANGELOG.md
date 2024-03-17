@@ -1,7 +1,12 @@
-# v0.7.7 (WIP)
+# v0.9.0
+
+- [feat](https://github.com/sstadick/crabz/pull/34) Add `--quite` flag from @camlloyd
+- [feat](https://github.com/sstadick/crabz/pull/33) Update deflate file extensions from @camlloyd
+
+# v0.7.7 	
 
 - [bugfix](https://github.com/sstadick/crabz/pull/24) Remove benchmark data from distribution from @Shnatsel
-- (WIP) [bugfix](https://github.com/sstadick/crabz/issues/25)
+- [bugfix](https://github.com/sstadick/crabz/issues/25)
 
 # v0.7.6
 
