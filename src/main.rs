@@ -312,6 +312,10 @@ struct Opts {
     /// - Instance 2 has `-p 4 -P 4` set indicating that it will use 4 cores pinned at 4, 5, 6, 7
     #[structopt(short = "P", long)]
     pin_at: Option<usize>,
+
+    /// Suppress non-error messages
+    #[structopt(short = "Q", long)]
+    quiet: bool,
 }
 
 fn main() -> Result<()> {
@@ -475,10 +479,14 @@ where
 }
 /// Parse args and set up logging / tracing
 fn setup() -> Opts {
-    if std::env::var("RUST_LOG").is_err() {
+    let opts = Opts::from_args();
+
+    if opts.quiet {
+        std::env::set_var("RUST_LOG", "error");
+    } else if std::env::var("RUST_LOG").is_err() {
         std::env::set_var("RUST_LOG", "info");
     }
     env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
 
-    Opts::from_args()
+    opts
 }
