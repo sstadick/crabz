@@ -1,13 +1,17 @@
+# v0.9.2
+
+- [bugfix] Install `cargo-deb` with `--locked` in CI
+
 # v0.9.1
 
-- [bugfix](https://github.com/sstadick/crabz/pull/36)  cargo update to fix dep resolution issue from @chenrui333
+- [bugfix](https://github.com/sstadick/crabz/pull/36) cargo update to fix dep resolution issue from @chenrui333
 
 # v0.9.0
 
 - [feat](https://github.com/sstadick/crabz/pull/34) Add `--quite` flag from @camlloyd
 - [feat](https://github.com/sstadick/crabz/pull/33) Update deflate file extensions from @camlloyd
 
-# v0.7.7 	
+# v0.7.7
 
 - [bugfix](https://github.com/sstadick/crabz/pull/24) Remove benchmark data from distribution from @Shnatsel
 - [bugfix](https://github.com/sstadick/crabz/issues/25)
@@ -30,7 +34,7 @@
 
 # v0.7.2
 
-- Includes updated THRIDPARYT.yml 
+- Includes updated THRIDPARYT.yml
 
 # v0.7.1
 

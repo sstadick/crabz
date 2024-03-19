@@ -52,7 +52,7 @@ jobs:
         shell: bash
         run: |
           if [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
-            cargo install cargo-deb
+            cargo install --locked cargo-deb
             asset_path="${{ matrix.asset_name }}.deb"
             cargo deb --output ./"${asset_path}"
             echo "DEB=${asset_path}" >> $GITHUB_ENV
