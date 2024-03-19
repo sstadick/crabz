@@ -1,3 +1,7 @@
+# v0.9.1
+
+- [bugfix](https://github.com/sstadick/crabz/pull/36)  cargo update to fix dep resolution issue from @chenrui333
+
 # v0.9.0
 
 - [feat](https://github.com/sstadick/crabz/pull/34) Add `--quite` flag from @camlloyd
