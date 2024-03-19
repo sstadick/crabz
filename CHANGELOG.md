@@ -1,3 +1,7 @@
+# v0.9.3
+
+- [bugfix] Install `cargo-deb` outside of project directory
+
 # v0.9.2
 
 - [bugfix] Install `cargo-deb` with `--locked` in CI
