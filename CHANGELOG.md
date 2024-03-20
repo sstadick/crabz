@@ -1,3 +1,7 @@
+# v0.10.0
+
+- [bugfix] Conditional compilation without snappy feature by @camlloyd
+
 # v0.9.4
 
 - [bugfix] Install `cargo-deb` outside of project directory
