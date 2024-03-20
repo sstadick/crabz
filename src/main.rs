@@ -261,6 +261,7 @@ impl Format {
             #[cfg(feature = "any_zlib")]
             Format::Zlib => ("zz", string_set!["zz", "z", "gz"]),
             Format::RawDeflate => ("deflate", string_set!["deflate", "zz", "z"]),
+            #[cfg(feature = "snappy")]
             Format::Snap => ("sz", string_set!["sz", "snappy"]),
         }
     }
