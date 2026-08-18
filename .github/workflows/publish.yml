@@ -3,19 +3,46 @@ name: Publish
 on:
   push:
     tags:
-      - "*"
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
+  create-release:
+    name: Create GitHub release
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Create release if needed
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$GITHUB_REF_NAME" \
+              --repo "$GITHUB_REPOSITORY" \
+              --verify-tag \
+              --title "$GITHUB_REF_NAME" \
+              --generate-notes
+          fi
+
   publish:
-    name: Publish for ${{ matrix.os }}
+    name: Publish ${{ matrix.asset_name }}
+    needs: create-release
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
             artifact_name: crabz
             asset_name: crabz-linux-amd64
-          - os: macos-latest
+          - os: macos-15-intel
             artifact_name: crabz
             asset_name: crabz-macos-amd64
           - os: windows-latest
@@ -23,64 +50,60 @@ jobs:
             asset_name: crabz-windows-amd64.exe
 
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout sources
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
 
-      - name: Build
+      - name: Install pinned Rust toolchain
+        run: rustc --version --verbose
+
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+
+      - name: Build release binary
+        run: cargo build --release --locked
+
+      - name: Stage binary asset
         shell: bash
         run: |
-          cargo build --release --locked
+          cp "target/release/${{ matrix.artifact_name }}" "${{ matrix.asset_name }}"
+          echo "BINARY=${{ matrix.asset_name }}" >> "$GITHUB_ENV"
 
-      - name: Build archive
+      - name: Build source archive
         shell: bash
         run: |
-          staging="${{matrix.asset_name}}-src"
-          mkdir -p "$staging"
-
-          cp {README.md,UNLICENSE,LICENSE-MIT} "$staging/"
-          cp {Cargo.toml,Cargo.lock} "$staging/"
-          cp -R ./src "./$staging/src"
-
-          if [ "${{ matrix.os }}" = "windows-latest" ]; then
-            7z a "${staging}.zip" "$staging"
-            echo "ASSET=${staging}.zip" >> $GITHUB_ENV
+          staging="${{ matrix.asset_name }}-src"
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            git archive --format=zip --prefix="${staging}/" \
+              --output="${staging}.zip" HEAD
+            echo "ASSET=${staging}.zip" >> "$GITHUB_ENV"
           else
-            tar czf "${staging}.tar.gz" "${staging}"
-            echo "ASSET=${staging}.tar.gz" >> $GITHUB_ENV
+            git archive --format=tar.gz --prefix="${staging}/" \
+              --output="${staging}.tar.gz" HEAD
+            echo "ASSET=${staging}.tar.gz" >> "$GITHUB_ENV"
           fi
 
-      - name: Create deb artifact
+      - name: Build Debian package
+        if: runner.os == 'Linux'
         shell: bash
         run: |
-          if [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
-            cd ..
-            cargo install --locked cargo-deb
-            cd -
-            asset_path="${{ matrix.asset_name }}.deb"
-            cargo deb --output ./"${asset_path}"
-            echo "DEB=${asset_path}" >> $GITHUB_ENV
+          pushd ..
+          cargo install --locked cargo-deb --version 3.7.0
+          popd
+          asset_path="${{ matrix.asset_name }}.deb"
+          cargo deb --output "./${asset_path}"
+          echo "DEB=${asset_path}" >> "$GITHUB_ENV"
+
+      - name: Upload release assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          assets=("$ASSET" "$BINARY")
+          if [[ -n "${DEB:-}" ]]; then
+            assets+=("$DEB")
           fi
-
-      - name: Upload deb package
-        uses: svenstaro/upload-release-action@v2
-        if: matrix.os == 'ubuntu-latest'
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: ${{ env.DEB }}
-          asset_name: ${{ env.DEB }}
-          tag: ${{ github.ref }}
-
-      - name: Upload src to release
-        uses: svenstaro/upload-release-action@v2
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: ${{ env.ASSET }}
-          asset_name: ${{ env.ASSET }}
-          tag: ${{ github.ref }}
-
-      - name: Upload binaries to release
-        uses: svenstaro/upload-release-action@v2
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: target/release/${{ matrix.artifact_name }}
-          asset_name: ${{ matrix.asset_name }}
-          tag: ${{ github.ref }}
+          gh release upload "$GITHUB_REF_NAME" "${assets[@]}" \
+            --repo "$GITHUB_REPOSITORY" \
+            --clobber

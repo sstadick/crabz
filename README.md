@@ -2,7 +2,7 @@
 
 
 <p align="center">
-  <a href="https://github.com/sstadick/crabz/actions?query=workflow%3ACheck"><img src="https://github.com/sstadick/crabz/workflows/Check/badge.svg" alt="Build Status"></a>
+  <a href="https://github.com/sstadick/crabz/actions/workflows/build_and_test.yml"><img src="https://github.com/sstadick/crabz/actions/workflows/build_and_test.yml/badge.svg" alt="Build Status"></a>
   <img src="https://img.shields.io/crates/l/crabz.svg" alt="license">
   <a href="https://crates.io/crates/crabz"><img src="https://img.shields.io/crates/v/crabz.svg?colorB=319e8c" alt="Version info"></a><br>
   Like pigz, but rust.
@@ -434,4 +434,3 @@ These benchmarks were run on the `all_train.csv` data found [here](https://archi
 ## TODOs
 
 - Add some form of auto format detection, even just by file extension
-

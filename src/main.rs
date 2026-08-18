@@ -1,7 +1,7 @@
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
-use anyhow::{bail, Error, Result};
+use anyhow::{Error, Result, bail};
 use env_logger::Env;
 use flate2::read::MultiGzDecoder;
 use flate2::write::DeflateDecoder;
@@ -18,8 +18,8 @@ use std::fs::File;
 use std::io::{self, BufReader, BufWriter, Read, Write};
 use std::path::PathBuf;
 use std::process::exit;
-use structopt::{clap::AppSettings::ColoredHelp, StructOpt};
-use strum::{EnumString, EnumVariantNames, VariantNames};
+use structopt::{StructOpt, clap::AppSettings::ColoredHelp};
+use strum::{EnumString, VariantNames};
 
 #[cfg(feature = "any_zlib")]
 use flate2::write::ZlibDecoder;
@@ -137,15 +137,15 @@ fn get_output(
 /// Check if err is a broken pipe.
 #[inline]
 fn is_broken_pipe(err: &Error) -> bool {
-    if let Some(io_err) = err.root_cause().downcast_ref::<io::Error>() {
-        if io_err.kind() == io::ErrorKind::BrokenPipe {
-            return true;
-        }
+    if let Some(io_err) = err.root_cause().downcast_ref::<io::Error>()
+        && io_err.kind() == io::ErrorKind::BrokenPipe
+    {
+        return true;
     }
     false
 }
 
-#[derive(EnumString, EnumVariantNames, strum::Display, Debug, Copy, Clone)]
+#[derive(EnumString, VariantNames, strum::Display, Debug, Copy, Clone)]
 #[strum(serialize_all = "kebab_case")]
 enum Format {
     #[strum(serialize = "gzip", serialize = "gz")]
@@ -173,7 +173,7 @@ impl Format {
         num_threads: usize,
         compression_level: u32,
         pin_at: Option<usize>,
-    ) -> Box<dyn ZWriter>
+    ) -> Box<dyn ZWriter<W>>
     where
         W: Write + Send + 'static,
     {
@@ -367,10 +367,10 @@ fn main() -> Result<()> {
     }
 
     // Remove input file
-    if opts.in_place {
-        if let Some(file) = opts.file {
-            std::fs::remove_file(file)?;
-        }
+    if opts.in_place
+        && let Some(file) = opts.file
+    {
+        std::fs::remove_file(file)?;
     }
 
     Ok(())
@@ -391,9 +391,7 @@ where
 {
     info!(
         "Compressing ({}) with {} threads at compression level {}.",
-        format.to_string(),
-        num_threads,
-        compression_level
+        format, num_threads, compression_level
     );
     let mut writer = format.create_compressor(output, num_threads, compression_level, pin_at);
     io::copy(&mut input, &mut writer)?;
@@ -415,8 +413,7 @@ where
 {
     info!(
         "Decompressing ({}) with {} threads available.",
-        format.to_string(),
-        num_threads
+        format, num_threads
     );
 
     match format {
@@ -483,11 +480,12 @@ fn setup() -> Opts {
     let opts = Opts::from_args();
 
     if opts.quiet {
-        std::env::set_var("RUST_LOG", "error");
-    } else if std::env::var("RUST_LOG").is_err() {
-        std::env::set_var("RUST_LOG", "info");
+        env_logger::Builder::new()
+            .filter_level(log::LevelFilter::Error)
+            .init();
+    } else {
+        env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
     }
-    env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
 
     opts
 }
