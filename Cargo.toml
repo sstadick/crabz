@@ -34,7 +34,7 @@ any_zlib = [] # internal feature flag
 anyhow = "1.0.104"
 env_logger = { version = "0.11.11", default-features = false, features = ["default"] }
 flate2 = { version = "1.1.9", default-features = false }
-gzp = { version = "2.0.3", default-features = false }
+gzp = { version = "2.0.4", default-features = false }
 lazy_static = "1.5.0"
 log = "0.4.33"
 num_cpus = "1.17.0"

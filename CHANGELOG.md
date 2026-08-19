@@ -1,6 +1,6 @@
 # v0.10.1
 
-- Upgrade to gzp 2.x, require gzp 2.0.3, and adopt its typed writer API.
+- Upgrade to gzp 2.x, require gzp 2.0.4, and adopt its typed writer API.
 - Modernize the Rust toolchain and dependency set and add CLI round-trip coverage.
 - Refresh `env_logger` and the pinned `actions/checkout` workflow action.
 
