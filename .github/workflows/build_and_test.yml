@@ -1,6 +1,17 @@
-name: Check
+name: CI
 
-on: [push, pull_request]
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 env:
   CARGO_TERM_COLOR: always
@@ -9,74 +20,99 @@ jobs:
   check:
     name: Check
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v2
-
-      - name: Install stable toolchain
-        uses: actions-rs/toolchain@v1
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
-          profile: minimal
-          toolchain: stable
-          override: false 
+          persist-credentials: false
+
+      - name: Install pinned Rust toolchain
+        run: rustc --version --verbose
 
       - name: Cache dependencies
-        uses: Swatinem/rust-cache@v1
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
 
       - name: Run cargo check
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
+        run: cargo check --locked
+
+      - name: Verify crate package
+        run: cargo package --locked
 
   lints:
     name: Lints
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v2
-
-      - name: Install stable toolchain
-        uses: actions-rs/toolchain@v1
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
-          profile: minimal
-          toolchain: stable
-          override: false 
-          components: rustfmt, clippy
+          persist-credentials: false
+
+      - name: Install pinned Rust toolchain
+        run: rustc --version --verbose
 
       - name: Cache dependencies
-        uses: Swatinem/rust-cache@v1
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
 
       - name: Run cargo fmt
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
+        run: cargo fmt --all -- --check
 
       - name: Run cargo clippy
-        uses: actions-rs/cargo@v1
+        run: cargo clippy --locked --all-targets -- -D warnings
+
+  features:
+    name: Feature Set (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: default
+            args: ""
+          - name: rust-deflate
+            args: --no-default-features --features deflate_rust
+          - name: zlib
+            args: --no-default-features --features deflate_zlib
+          - name: zlib-ng
+            args: --no-default-features --features deflate_zlib_ng
+          - name: rust-deflate-and-snap
+            args: --no-default-features --features deflate_rust,snap_default
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
-          command: clippy
-          args: -- -D warnings
+          persist-credentials: false
+
+      - name: Install pinned Rust toolchain
+        run: rustc --version --verbose
+
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+
+      - name: Test feature set
+        run: cargo test --locked ${{ matrix.args }}
 
   test:
     name: Test Suite
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest, macOS-latest, windows-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v2
-
-      - name: Install stable toolchain
-        uses: actions-rs/toolchain@v1
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
-          profile: minimal
-          toolchain: stable
-          override: false 
+          persist-credentials: false
+
+      - name: Install pinned Rust toolchain
+        run: rustc --version --verbose
 
       - name: Cache dependencies
-        uses: Swatinem/rust-cache@v1
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
 
       - name: Run tests
-        run: cargo test --verbose
+        run: cargo test --verbose --locked
