@@ -1,7 +1,7 @@
 [package]
 name = "crabz"
 authors = ["Seth Stadick"]
-version = "0.10.0"
+version = "0.10.1"
 edition = "2024"
 license = "Unlicense OR MIT"
 readme = "README.md"
@@ -32,9 +32,9 @@ any_zlib = [] # internal feature flag
 
 [dependencies]
 anyhow = "1.0.104"
-env_logger = { version = "0.10.2", default-features = false, features = ["default"] }
+env_logger = { version = "0.11.11", default-features = false, features = ["default"] }
 flate2 = { version = "1.1.9", default-features = false }
-gzp = { version = "2.0.2", default-features = false }
+gzp = { version = "2.0.3", default-features = false }
 lazy_static = "1.5.0"
 log = "0.4.33"
 num_cpus = "1.17.0"

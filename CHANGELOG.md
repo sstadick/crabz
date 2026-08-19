@@ -1,3 +1,9 @@
+# v0.10.1
+
+- Upgrade to gzp 2.x, require gzp 2.0.3, and adopt its typed writer API.
+- Modernize the Rust toolchain and dependency set and add CLI round-trip coverage.
+- Refresh `env_logger` and the pinned `actions/checkout` workflow action.
+
 # v0.10.0
 
 - [bugfix] Conditional compilation without snappy feature by @camlloyd
