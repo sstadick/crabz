@@ -31,7 +31,7 @@ jobs:
         run: rustc --version --verbose
 
       - name: Cache dependencies
-        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
 
       - name: Run cargo check
         run: cargo check --locked
@@ -53,7 +53,7 @@ jobs:
         run: rustc --version --verbose
 
       - name: Cache dependencies
-        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
 
       - name: Run cargo fmt
         run: cargo fmt --all -- --check
@@ -89,7 +89,7 @@ jobs:
         run: rustc --version --verbose
 
       - name: Cache dependencies
-        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
 
       - name: Test feature set
         run: cargo test --locked ${{ matrix.args }}
@@ -112,7 +112,7 @@ jobs:
         run: rustc --version --verbose
 
       - name: Cache dependencies
-        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
 
       - name: Run tests
         run: cargo test --verbose --locked
